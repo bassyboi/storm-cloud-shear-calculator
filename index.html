@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Storm Shear & Updraft Calculator – Explained</title>
+  <title>Storm Shear, Updraft & Mesocyclone Calculator – Field Testing Guide</title>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -15,13 +15,16 @@
       background: #fff;
       padding: 2rem;
       border-radius: 10px;
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
       box-shadow: 0px 0px 15px rgba(0,0,0,0.1);
     }
     h1, h2 {
       text-align: center;
       color: #333;
+    }
+    h3 {
+      color: #444;
     }
     label {
       display: block;
@@ -64,8 +67,10 @@
       padding: 0.25rem 0.5rem;
       border-radius: 4px;
       font-family: monospace;
+      display: inline-block;
+      margin: 0.2rem 0;
     }
-    .info {
+    .info, .mesocyclone-info, .fieldtest-info {
       background: #fff8dc;
       padding: 1rem;
       border: 1px solid #f4e1a1;
@@ -76,22 +81,66 @@
 </head>
 <body>
   <div class="container">
-    <h1>Storm Shear & Updraft Calculator</h1>
+    <h1>Storm Shear, Updraft & Mesocyclone Calculator</h1>
+    
+    <!-- General Calculator Info -->
     <div class="info">
       <h2>About This Calculator</h2>
       <p>
-        This tool helps estimate three important storm parameters:
+        This tool estimates three key storm parameters:
       </p>
       <ul>
-        <li><strong>Updraft Speed (w):</strong> How fast the storm air is rising (in m/s). We calculate this from <em>CAPE</em>, which tells us how much energy the storm has.</li>
-        <li><strong>Effective Advective Wind (U<sub>eff</sub>):</strong> The average wind speed pushing the storm sideways, based on how tilted the storm looks.</li>
-        <li><strong>Bulk Wind Shear (S):</strong> How quickly the wind speed increases with height. We use a default storm “height” of 6000 m – meaning we assume that if you go from the ground to 6000 m, the wind changes from near zero to roughly double the effective wind.</li>
+        <li>
+          <strong>Updraft Speed (w):</strong> How fast the storm air is rising (in m/s). We calculate this using CAPE (Convective Available Potential Energy), which measures the energy available for storm development.
+        </li>
+        <li>
+          <strong>Effective Advective Wind (U<sub>eff</sub>):</strong> The average wind speed that pushes the storm sideways—estimated from the observed tilt of the storm.
+        </li>
+        <li>
+          <strong>Bulk Wind Shear (S):</strong> How quickly the wind speed increases with height. We assume a default storm “height” (vertical separation) of <strong>6000 m</strong>, meaning the wind increases from near zero at the surface to about twice the effective wind at the top.
+        </li>
       </ul>
       <p>
-        In everyday terms, if you know the available energy (CAPE) and you observe the storm leaning at a certain angle, this calculator lets you back out the average wind that’s affecting the storm and how that wind changes with altitude.
+        In simpler terms, if you know the energy available in the atmosphere (CAPE) and notice a storm leaning at a certain angle, this tool estimates both how hard the storm is being lifted and pushed sideways, as well as how quickly that wind changes with height.
       </p>
     </div>
-
+    
+    <!-- Mesocyclone Info -->
+    <div class="mesocyclone-info">
+      <h2>Mesocyclones and Storm Types</h2>
+      <p>
+        A <strong>mesocyclone</strong> is a rotating updraft commonly found within supercell thunderstorms. They’re a key feature that meteorologists look at when forecasting severe weather.
+        <br><br>
+        <em>Supercells</em> are organized thunderstorms known for their persistent, rotating updrafts. They tend to produce large hail, damaging winds, and sometimes tornadoes.
+      </p>
+      <p>
+        In contrast, <em>popcorn storms</em> (or pulse storms) are scattered, short-lived cells that pop up in clusters. These storms generally have weak, non-rotating updrafts and are less likely to produce severe weather.
+      </p>
+    </div>
+    
+    <!-- Field Testing Info -->
+    <div class="fieldtest-info">
+      <h2>How to Field Test These Parameters</h2>
+      <p>
+        When you’re out in the field with a supercell, you can gather some of these measurements using:
+      </p>
+      <ul>
+        <li>
+          <strong>CAPE:</strong> Estimated from weather balloon soundings or local observations. Higher CAPE means more energy for a strong updraft.
+        </li>
+        <li>
+          <strong>Storm Tilt Angle:</strong> Visually or via radar—if the storm appears noticeably slanted, you can measure that angle or estimate it.
+        </li>
+        <li>
+          <strong>Wind Shear:</strong> Often measured between low and mid/high altitudes using mobile mesonet data or remote sensing. In this calculator, we assume a default 6000 m separation for simplicity.
+        </li>
+      </ul>
+      <p>
+        By combining these observations, you can classify the storm. A supercell with significant tilt and high CAPE is more likely to develop a mesocyclone than scattered, short-lived “popcorn” storms.
+      </p>
+    </div>
+    
+    <!-- Inputs Section -->
     <h2>Inputs</h2>
     <label for="cape">CAPE (J/kg):</label>
     <input type="number" id="cape" placeholder="Enter CAPE (J/kg)" step="any" />
@@ -100,11 +149,12 @@
     <input type="number" id="angle" placeholder="Enter storm tilt angle" step="any" />
     
     <p>
-      <em>Note:</em> A default vertical separation (storm height) of <strong>6000 m</strong> is assumed to estimate wind shear.
+      <em>Note:</em> We assume a default vertical separation (storm height) of <strong>6000 m</strong> to estimate wind shear.
     </p>
     
     <button id="calcButton">Calculate Parameters</button>
 
+    <!-- Results Section -->
     <div id="result" class="result" style="display:none;">
       <h2>Results</h2>
       
@@ -194,7 +244,7 @@
         "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span> (Sideways wind pushing the storm)<br>" +
         "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span><br>" +
         "<em>Assuming a storm height of " + defaultDeltaZ + " m</em><br>" +
-        "In simple terms, the wind increases from nearly 0 at the ground to about twice the effective wind at the top.";
+        "In simple terms, we assume the wind is close to zero at the surface and increases up to about twice the effective wind at the top.";
       
       document.getElementById("result").style.display = "block";
     });
