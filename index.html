@@ -72,12 +72,9 @@
 
     <label for="angle">Storm Tilt Angle (θ in degrees):</label>
     <input type="number" id="angle" placeholder="Enter storm tilt angle" step="any" />
-
-    <label for="verticalDistance">Vertical Separation (Δz in meters):</label>
-    <input type="number" id="verticalDistance" placeholder="Enter vertical separation" step="any" />
-
+    
     <p>
-      <em>Note:</em> We assume that the low-level wind is minimal so the effective wind is due to the stronger upper-level winds.
+      <em>Note:</em> A default vertical separation of 6000 m is assumed to estimate shear.
     </p>
     
     <button id="calcButton">Calculate Parameters</button>
@@ -96,24 +93,19 @@
       return deg * (Math.PI / 180);
     }
     
-    // Utility: round value to a specified number of decimals
+    // Utility function: round a number to a given number of decimals
     function round(value, decimals) {
       return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
     }
-    
+
     document.getElementById("calcButton").addEventListener("click", function() {
-      // Retrieve input values and convert to numbers
+      // Retrieve input values and convert them to numbers
       const cape = parseFloat(document.getElementById("cape").value);
       const angleDeg = parseFloat(document.getElementById("angle").value);
-      const verticalDistance = parseFloat(document.getElementById("verticalDistance").value);
       
       // Validate inputs
-      if (
-        isNaN(cape) || cape < 0 ||
-        isNaN(angleDeg) ||
-        isNaN(verticalDistance) || verticalDistance <= 0
-      ) {
-        alert("Please ensure CAPE is non-negative and vertical separation is greater than 0.");
+      if (isNaN(cape) || cape < 0 || isNaN(angleDeg)) {
+        alert("Please ensure that CAPE is non-negative and an angle is provided.");
         return;
       }
       
@@ -128,10 +120,11 @@
       //    U_eff = w * tan(θ)
       const effectiveWind = updraftSpeed * Math.tan(angleRad);
       
-      // 4. Estimate bulk wind shear:
-      //    Assuming U_low ≈ 0 and a linear increase,
-      //    U_high ≈ 2 * U_eff. Then shear S = U_high / Δz = (2 * U_eff) / Δz.
-      const shear = (2 * effectiveWind) / verticalDistance;
+      // 4. Calculate bulk wind shear using a default vertical separation
+      //    Default verticalDistance (Δz) = 6000 m
+      const defaultDeltaZ = 6000;
+      //    Assuming U_low ≈ 0, then U_high ≈ 2 * U_eff, so S = U_high / Δz = (2 * U_eff) / Δz
+      const shear = (2 * effectiveWind) / defaultDeltaZ;
       
       // Display the results
       document.getElementById("updraftSpeed").textContent = round(updraftSpeed, 2);
@@ -142,8 +135,9 @@
         "Calculations used:<br>" +
         "<span class='formula'>w = √(2 × CAPE)</span><br>" +
         "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span><br>" +
-        "<span class='formula'>Assuming U<sub>low</sub> ≈ 0, then U<sub>high</sub> ≈ 2 × U<sub>eff</sub></span><br>" +
-        "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span>";
+        "<span class='formula'>Assuming U<sub>low</sub> ≈ 0, U<sub>high</sub> ≈ 2 × U<sub>eff</sub></span><br>" +
+        "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span><br>" +
+        "<em>Default vertical separation Δz = " + defaultDeltaZ + " m</em>";
       
       document.getElementById("result").style.display = "block";
     });
