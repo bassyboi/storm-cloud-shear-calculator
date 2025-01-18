@@ -3,27 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reverse Storm Shear & Updraft Calculator</title>
+  <title>Storm Shear & Updraft Calculator – Explained</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       margin: 2rem;
-      background-color: #f4f4f4;
+      background-color: #f0f8ff;
+      line-height: 1.6;
     }
     .container {
       background: #fff;
       padding: 2rem;
-      border-radius: 8px;
-      max-width: 600px;
+      border-radius: 10px;
+      max-width: 700px;
       margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0px 0px 15px rgba(0,0,0,0.1);
     }
     h1, h2 {
       text-align: center;
+      color: #333;
     }
     label {
       display: block;
-      margin-top: 1rem;
+      margin-top: 1.2rem;
+      color: #333;
     }
     input[type="number"] {
       width: 100%;
@@ -31,11 +34,12 @@
       margin-top: 0.5rem;
       border: 1px solid #ccc;
       border-radius: 4px;
+      font-size: 1rem;
     }
     button {
       display: block;
       width: 100%;
-      padding: 0.75rem;
+      padding: 0.8rem;
       background: #007acc;
       color: #fff;
       border: none;
@@ -43,16 +47,17 @@
       font-size: 1rem;
       cursor: pointer;
       margin-top: 1.5rem;
+      transition: background 0.3s;
     }
     button:hover {
       background: #005fa3;
     }
     .result {
       margin-top: 1.5rem;
-      padding: 1rem;
+      padding: 1.2rem;
       background: #e9f5ff;
       border: 1px solid #b3d7ff;
-      border-radius: 4px;
+      border-radius: 8px;
     }
     .formula {
       background: #eef;
@@ -60,12 +65,33 @@
       border-radius: 4px;
       font-family: monospace;
     }
+    .info {
+      background: #fff8dc;
+      padding: 1rem;
+      border: 1px solid #f4e1a1;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Reverse Storm Shear & Updraft Calculator</h1>
-    
+    <h1>Storm Shear & Updraft Calculator</h1>
+    <div class="info">
+      <h2>About This Calculator</h2>
+      <p>
+        This tool helps estimate three important storm parameters:
+      </p>
+      <ul>
+        <li><strong>Updraft Speed (w):</strong> How fast the storm air is rising (in m/s). We calculate this from <em>CAPE</em>, which tells us how much energy the storm has.</li>
+        <li><strong>Effective Advective Wind (U<sub>eff</sub>):</strong> The average wind speed pushing the storm sideways, based on how tilted the storm looks.</li>
+        <li><strong>Bulk Wind Shear (S):</strong> How quickly the wind speed increases with height. We use a default storm “height” of 6000 m – meaning we assume that if you go from the ground to 6000 m, the wind changes from near zero to roughly double the effective wind.</li>
+      </ul>
+      <p>
+        In everyday terms, if you know the available energy (CAPE) and you observe the storm leaning at a certain angle, this calculator lets you back out the average wind that’s affecting the storm and how that wind changes with altitude.
+      </p>
+    </div>
+
     <h2>Inputs</h2>
     <label for="cape">CAPE (J/kg):</label>
     <input type="number" id="cape" placeholder="Enter CAPE (J/kg)" step="any" />
@@ -74,70 +100,101 @@
     <input type="number" id="angle" placeholder="Enter storm tilt angle" step="any" />
     
     <p>
-      <em>Note:</em> A default vertical separation of 6000 m is assumed to estimate shear.
+      <em>Note:</em> A default vertical separation (storm height) of <strong>6000 m</strong> is assumed to estimate wind shear.
     </p>
     
     <button id="calcButton">Calculate Parameters</button>
 
     <div id="result" class="result" style="display:none;">
-      <p><strong>Estimated Updraft Speed (w):</strong> <span id="updraftSpeed"></span> m/s</p>
-      <p><strong>Effective Advective Wind (U<sub>eff</sub>):</strong> <span id="effectiveWind"></span> m/s</p>
-      <p><strong>Estimated Bulk Wind Shear (S):</strong> <span id="shear"></span> s<sup>-1</sup></p>
+      <h2>Results</h2>
+      
+      <p><strong>Estimated Updraft Speed (w):</strong></p>
+      <ul>
+        <li><span id="updraft_mps"></span> m/s</li>
+        <li><span id="updraft_knots"></span> knots</li>
+        <li><span id="updraft_kmph"></span> km/h</li>
+      </ul>
+      
+      <p><strong>Effective Advective Wind (U<sub>eff</sub>):</strong></p>
+      <ul>
+        <li><span id="wind_mps"></span> m/s</li>
+        <li><span id="wind_knots"></span> knots</li>
+        <li><span id="wind_kmph"></span> km/h</li>
+      </ul>
+      
+      <p><strong>Estimated Bulk Wind Shear (S):</strong> 
+         <span id="shear"></span> s<sup>-1</sup>
+      </p>
+      
       <p id="explanation"></p>
     </div>
   </div>
 
   <script>
+    // Conversion factors
+    const mpsToKnots = 1.94384;
+    const mpsToKmph = 3.6;
+    
     // Convert degrees to radians
     function degToRad(deg) {
       return deg * (Math.PI / 180);
     }
     
-    // Utility function: round a number to a given number of decimals
+    // Utility function: round a number to a specified number of decimals
     function round(value, decimals) {
       return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
     }
 
     document.getElementById("calcButton").addEventListener("click", function() {
-      // Retrieve input values and convert them to numbers
+      // Retrieve and parse input values
       const cape = parseFloat(document.getElementById("cape").value);
       const angleDeg = parseFloat(document.getElementById("angle").value);
       
       // Validate inputs
       if (isNaN(cape) || cape < 0 || isNaN(angleDeg)) {
-        alert("Please ensure that CAPE is non-negative and an angle is provided.");
+        alert("Please make sure CAPE is non-negative and a valid angle is provided.");
         return;
       }
       
-      // 1. Estimate updraft speed using CAPE:
-      //    w = sqrt(2 * CAPE)
+      // 1. Estimate updraft speed using CAPE: w = sqrt(2 * CAPE)
       const updraftSpeed = Math.sqrt(2 * cape);
       
-      // 2. Convert tilt angle from degrees to radians
+      // 2. Convert tilt angle from degrees to radians and compute effective wind: U_eff = w * tan(θ)
       const angleRad = degToRad(angleDeg);
-      
-      // 3. Calculate effective advective wind:
-      //    U_eff = w * tan(θ)
       const effectiveWind = updraftSpeed * Math.tan(angleRad);
       
-      // 4. Calculate bulk wind shear using a default vertical separation
-      //    Default verticalDistance (Δz) = 6000 m
+      // 3. Calculate bulk wind shear using a default storm "height" (vertical separation Δz = 6000 m)
+      //    We assume that the wind near the ground is nearly zero, so the wind at the top is roughly 2 x U_eff.
+      //    The shear (S) is then: S = (2 * U_eff) / Δz.
       const defaultDeltaZ = 6000;
-      //    Assuming U_low ≈ 0, then U_high ≈ 2 * U_eff, so S = U_high / Δz = (2 * U_eff) / Δz
       const shear = (2 * effectiveWind) / defaultDeltaZ;
       
-      // Display the results
-      document.getElementById("updraftSpeed").textContent = round(updraftSpeed, 2);
-      document.getElementById("effectiveWind").textContent = round(effectiveWind, 2);
+      // 4. Compute conversions for updraft speed and effective wind
+      const updraftKnots = updraftSpeed * mpsToKnots;
+      const updraftKmph = updraftSpeed * mpsToKmph;
+      
+      const windKnots = effectiveWind * mpsToKnots;
+      const windKmph = effectiveWind * mpsToKmph;
+      
+      // Display the results in different units
+      document.getElementById("updraft_mps").textContent = round(updraftSpeed, 2);
+      document.getElementById("updraft_knots").textContent = round(updraftKnots, 2);
+      document.getElementById("updraft_kmph").textContent = round(updraftKmph, 2);
+      
+      document.getElementById("wind_mps").textContent = round(effectiveWind, 2);
+      document.getElementById("wind_knots").textContent = round(windKnots, 2);
+      document.getElementById("wind_kmph").textContent = round(windKmph, 2);
+      
       document.getElementById("shear").textContent = round(shear, 4);
       
+      // Plain language explanation of formulas used
       document.getElementById("explanation").innerHTML =
         "Calculations used:<br>" +
-        "<span class='formula'>w = √(2 × CAPE)</span><br>" +
-        "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span><br>" +
-        "<span class='formula'>Assuming U<sub>low</sub> ≈ 0, U<sub>high</sub> ≈ 2 × U<sub>eff</sub></span><br>" +
+        "<span class='formula'>w = √(2 × CAPE)</span> (Updraft speed in m/s)<br>" +
+        "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span> (Sideways wind pushing the storm)<br>" +
         "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span><br>" +
-        "<em>Default vertical separation Δz = " + defaultDeltaZ + " m</em>";
+        "<em>Assuming a storm height of " + defaultDeltaZ + " m</em><br>" +
+        "In simple terms, the wind increases from nearly 0 at the ground to about twice the effective wind at the top.";
       
       document.getElementById("result").style.display = "block";
     });
