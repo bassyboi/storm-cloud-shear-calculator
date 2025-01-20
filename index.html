@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Storm Shear, Updraft & Mesocyclone Calculator – Field Testing Guide</title>
+  <title>Storm Shear & CAPE Calculator</title>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -70,7 +70,7 @@
       display: inline-block;
       margin: 0.2rem 0;
     }
-    .info, .mesocyclone-info, .fieldtest-info {
+    .info {
       background: #fff8dc;
       padding: 1rem;
       border: 1px solid #f4e1a1;
@@ -81,82 +81,35 @@
 </head>
 <body>
   <div class="container">
-    <h1>Storm Shear, Updraft & Mesocyclone Calculator</h1>
+    <h1>Storm Shear, Updraft & CAPE Calculator</h1>
     
-    <!-- General Calculator Info -->
     <div class="info">
-      <h2>About This Calculator</h2>
       <p>
-        This tool estimates three key storm parameters:
+        Enter <strong>CAPE (J/kg)</strong> and <strong>Storm Tilt Angle</strong> to compute Shear (and updraft speed), <br>
+        <em>OR</em> enter <strong>Shear</strong> and <strong>Storm Tilt Angle</strong> to compute CAPE (and updraft speed).
       </p>
-      <ul>
-        <li>
-          <strong>Updraft Speed (w):</strong> How fast the storm air is rising (in m/s). We calculate this using CAPE (Convective Available Potential Energy), which measures the energy available for storm development.
-        </li>
-        <li>
-          <strong>Effective Advective Wind (U<sub>eff</sub>):</strong> The average wind speed that pushes the storm sideways—estimated from the observed tilt of the storm.
-        </li>
-        <li>
-          <strong>Bulk Wind Shear (S):</strong> How quickly the wind speed increases with height. We assume a default storm “height” (vertical separation) of <strong>6000 m</strong>, meaning the wind increases from near zero at the surface to about twice the effective wind at the top.
-        </li>
-      </ul>
-      <p>
-        In simpler terms, if you know the energy available in the atmosphere (CAPE) and notice a storm leaning at a certain angle, this tool estimates both how hard the storm is being lifted and pushed sideways, as well as how quickly that wind changes with height.
-      </p>
+      <p style="color:red;"><strong>Note:</strong> If you enter both CAPE <em>and</em> Shear, the calculator will default to using CAPE and ignore the shear value.</p>
+      <p>We assume a default <strong>storm height</strong> (\(\Delta z\)) of <strong>6000 m</strong>.</p>
     </div>
-    
-    <!-- Mesocyclone Info -->
-    <div class="mesocyclone-info">
-      <h2>Mesocyclones and Storm Types</h2>
-      <p>
-        A <strong>mesocyclone</strong> is a rotating updraft commonly found within supercell thunderstorms. They’re a key feature that meteorologists look at when forecasting severe weather.
-        <br><br>
-        <em>Supercells</em> are organized thunderstorms known for their persistent, rotating updrafts. They tend to produce large hail, damaging winds, and sometimes tornadoes.
-      </p>
-      <p>
-        In contrast, <em>popcorn storms</em> (or pulse storms) are scattered, short-lived cells that pop up in clusters. These storms generally have weak, non-rotating updrafts and are less likely to produce severe weather.
-      </p>
-    </div>
-    
-    <!-- Field Testing Info -->
-    <div class="fieldtest-info">
-      <h2>How to Field Test These Parameters</h2>
-      <p>
-        When you’re out in the field with a supercell, you can gather some of these measurements using:
-      </p>
-      <ul>
-        <li>
-          <strong>CAPE:</strong> Estimated from weather balloon soundings or local observations. Higher CAPE means more energy for a strong updraft.
-        </li>
-        <li>
-          <strong>Storm Tilt Angle:</strong> Visually or via radar—if the storm appears noticeably slanted, you can measure that angle or estimate it.
-        </li>
-        <li>
-          <strong>Wind Shear:</strong> Often measured between low and mid/high altitudes using mobile mesonet data or remote sensing. In this calculator, we assume a default 6000 m separation for simplicity.
-        </li>
-      </ul>
-      <p>
-        By combining these observations, you can classify the storm. A supercell with significant tilt and high CAPE is more likely to develop a mesocyclone than scattered, short-lived “popcorn” storms.
-      </p>
-    </div>
-    
+
     <!-- Inputs Section -->
     <h2>Inputs</h2>
     <label for="cape">CAPE (J/kg):</label>
     <input type="number" id="cape" placeholder="Enter CAPE (J/kg)" step="any" />
 
+    <label for="shear">Bulk Wind Shear (S in 1/s):</label>
+    <input type="number" id="shear" placeholder="Enter shear (s⁻¹)" step="any" />
+
     <label for="angle">Storm Tilt Angle (θ in degrees):</label>
     <input type="number" id="angle" placeholder="Enter storm tilt angle" step="any" />
-    
-    <p>
-      <em>Note:</em> We assume a default vertical separation (storm height) of <strong>6000 m</strong> to estimate wind shear.
-    </p>
-    
+
     <button id="calcButton">Calculate Parameters</button>
 
     <!-- Results Section -->
     <div id="result" class="result" style="display:none;">
       <h2>Results</h2>
+      
+      <p><strong>CAPE (derived or entered):</strong> <span id="capeResult"></span> J/kg</p>
       
       <p><strong>Estimated Updraft Speed (w):</strong></p>
       <ul>
@@ -172,9 +125,7 @@
         <li><span id="wind_kmph"></span> km/h</li>
       </ul>
       
-      <p><strong>Estimated Bulk Wind Shear (S):</strong> 
-         <span id="shear"></span> s<sup>-1</sup>
-      </p>
+      <p><strong>Bulk Wind Shear (S):</strong> <span id="shearResult"></span> s<sup>-1</sup></p>
       
       <p id="explanation"></p>
     </div>
@@ -184,67 +135,112 @@
     // Conversion factors
     const mpsToKnots = 1.94384;
     const mpsToKmph = 3.6;
+    const defaultDeltaZ = 6000; // 6000 m vertical separation
     
-    // Convert degrees to radians
     function degToRad(deg) {
       return deg * (Math.PI / 180);
     }
     
-    // Utility function: round a number to a specified number of decimals
     function round(value, decimals) {
       return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
     }
-
+    
     document.getElementById("calcButton").addEventListener("click", function() {
-      // Retrieve and parse input values
-      const cape = parseFloat(document.getElementById("cape").value);
-      const angleDeg = parseFloat(document.getElementById("angle").value);
+      // Get inputs
+      let capeInput = document.getElementById("cape").value.trim();
+      let shearInput = document.getElementById("shear").value.trim();
+      let angleDeg   = parseFloat(document.getElementById("angle").value.trim());
       
-      // Validate inputs
-      if (isNaN(cape) || cape < 0 || isNaN(angleDeg)) {
-        alert("Please make sure CAPE is non-negative and a valid angle is provided.");
+      // Basic validation: user must enter an angle
+      if (isNaN(angleDeg)) {
+        alert("Please enter a valid storm tilt angle (in degrees).");
+        return;
+      }
+      // Also check that angle is not 0 if we want to do valid tan(θ) in case of shear-based method
+      if (angleDeg === 0 && shearInput) {
+        alert("Tilt angle cannot be zero when calculating CAPE from shear (division by zero).");
         return;
       }
       
-      // 1. Estimate updraft speed using CAPE: w = sqrt(2 * CAPE)
-      const updraftSpeed = Math.sqrt(2 * cape);
+      // Convert angle to radians for calculations
+      let angleRad = degToRad(angleDeg);
       
-      // 2. Convert tilt angle from degrees to radians and compute effective wind: U_eff = w * tan(θ)
-      const angleRad = degToRad(angleDeg);
-      const effectiveWind = updraftSpeed * Math.tan(angleRad);
+      let w;        // updraft speed (m/s)
+      let U_eff;    // effective wind (m/s)
+      let S;        // bulk wind shear (1/s)
+      let CAPE;     // convective available potential energy (J/kg)
       
-      // 3. Calculate bulk wind shear using a default storm "height" (vertical separation Δz = 6000 m)
-      //    We assume that the wind near the ground is nearly zero, so the wind at the top is roughly 2 x U_eff.
-      //    The shear (S) is then: S = (2 * U_eff) / Δz.
-      const defaultDeltaZ = 6000;
-      const shear = (2 * effectiveWind) / defaultDeltaZ;
+      // CASE 1: User provides CAPE (ignore shear if both are present)
+      if (capeInput !== "") {
+        // parse float
+        CAPE = parseFloat(capeInput);
+        // Validate that CAPE >= 0
+        if (isNaN(CAPE) || CAPE < 0) {
+          alert("Please enter a valid non-negative CAPE value.");
+          return;
+        }
+        
+        // 1) Updraft speed
+        w = Math.sqrt(2 * CAPE);
+        
+        // 2) Effective wind
+        U_eff = w * Math.tan(angleRad);
+        
+        // 3) Bulk wind shear
+        S = (2 * U_eff) / defaultDeltaZ;
+        
+      } else if (shearInput !== "") {
+        // CASE 2: User provides Shear => solve for CAPE
+        S = parseFloat(shearInput);
+        if (isNaN(S) || S < 0) {
+          alert("Please enter a valid non-negative Shear value.");
+          return;
+        }
+        
+        // Rearrange S = (2 * sqrt(2*CAPE) * tan(θ)) / Δz to solve for CAPE:
+        //   sqrt(2*CAPE) = (S * Δz) / [2 * tan(θ)]
+        //   2*CAPE = [ (S * Δz) / (2 * tan(θ)) ]^2
+        //   CAPE = 0.5 * [ (S * Δz) / (2 * tan(θ)) ]^2
+        let numerator = S * defaultDeltaZ;
+        let denominator = 2 * Math.tan(angleRad);
+        
+        CAPE = 0.5 * Math.pow(numerator / denominator, 2);
+        
+        // Now that we have CAPE, we can proceed as normal
+        w = Math.sqrt(2 * CAPE);
+        U_eff = w * Math.tan(angleRad);
+        
+      } else {
+        // If neither CAPE nor shear was provided
+        alert("Please enter either a CAPE value or a Shear value.");
+        return;
+      }
       
-      // 4. Compute conversions for updraft speed and effective wind
-      const updraftKnots = updraftSpeed * mpsToKnots;
-      const updraftKmph = updraftSpeed * mpsToKmph;
+      // Now we have w, U_eff, S, and CAPE. Let's do unit conversions for w and U_eff:
+      let w_knots = w * mpsToKnots;
+      let w_kmph  = w * mpsToKmph;
       
-      const windKnots = effectiveWind * mpsToKnots;
-      const windKmph = effectiveWind * mpsToKmph;
+      let Ueff_knots = U_eff * mpsToKnots;
+      let Ueff_kmph  = U_eff * mpsToKmph;
       
-      // Display the results in different units
-      document.getElementById("updraft_mps").textContent = round(updraftSpeed, 2);
-      document.getElementById("updraft_knots").textContent = round(updraftKnots, 2);
-      document.getElementById("updraft_kmph").textContent = round(updraftKmph, 2);
+      // Insert results into the page
+      document.getElementById("capeResult").textContent       = round(CAPE, 2);
+      document.getElementById("updraft_mps").textContent      = round(w, 2);
+      document.getElementById("updraft_knots").textContent    = round(w_knots, 2);
+      document.getElementById("updraft_kmph").textContent     = round(w_kmph, 2);
+      document.getElementById("wind_mps").textContent         = round(U_eff, 2);
+      document.getElementById("wind_knots").textContent       = round(Ueff_knots, 2);
+      document.getElementById("wind_kmph").textContent        = round(Ueff_kmph, 2);
+      document.getElementById("shearResult").textContent      = round(S, 5);
       
-      document.getElementById("wind_mps").textContent = round(effectiveWind, 2);
-      document.getElementById("wind_knots").textContent = round(windKnots, 2);
-      document.getElementById("wind_kmph").textContent = round(windKmph, 2);
-      
-      document.getElementById("shear").textContent = round(shear, 4);
-      
-      // Plain language explanation of formulas used
-      document.getElementById("explanation").innerHTML =
-        "Calculations used:<br>" +
-        "<span class='formula'>w = √(2 × CAPE)</span> (Updraft speed in m/s)<br>" +
-        "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span> (Sideways wind pushing the storm)<br>" +
-        "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span><br>" +
-        "<em>Assuming a storm height of " + defaultDeltaZ + " m</em><br>" +
-        "In simple terms, we assume the wind is close to zero at the surface and increases up to about twice the effective wind at the top.";
+      // Explanation (brief)
+      document.getElementById("explanation").innerHTML = 
+        "Formulas used:<br>" +
+        "<span class='formula'>w = √(2 × CAPE)</span><br>" +
+        "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span><br>" +
+        "<span class='formula'>S = (2 × U<sub>eff</sub>) / Δz</span>, where Δz = " + defaultDeltaZ + " m<br>" +
+        "If shear was provided, we solved for CAPE by rearranging the equations so that:<br>" +
+        "<span class='formula'>CAPE = 0.5 × [ (S × Δz) / (2 × tan(θ)) ]<sup>2</sup></span>";
       
       document.getElementById("result").style.display = "block";
     });
