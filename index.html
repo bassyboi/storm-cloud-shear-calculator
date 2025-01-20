@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Storm Calculator: Solve for CAPE, Shear, or Angle (Shear in Knots)</title>
+  <title>Storm Calculator: Solve for CAPE, Shear, or Angle (Shear in Knots, 60% CAPE)</title>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -83,6 +83,7 @@
     <div class="info">
       <p><strong>Instructions:</strong> Enter <em>exactly two</em> of the three inputs below. The script will solve for the missing third parameter. If you fill in all three or only one, it will show an error.</p>
       <p>Here, <strong>Shear</strong> is interpreted as the <em>difference in wind speed</em> (in knots) between the surface and 6 km altitude.</p>
+      <p>We now use <strong>60% of the theoretical updraft speed</strong>, i.e. <strong>0.6 × √(2 × CAPE)</strong>.</p>
       <p>Assumed storm height (Δz) = <strong>6000 m</strong>.</p>
     </div>
     
@@ -127,9 +128,12 @@
     /************************************************************
      * Constants and Helper Functions
      ************************************************************/
-    const defaultDeltaZ = 6000;        // 6000 m
-    const mpsToKnots = 1.94384;        // multiply m/s by this to get knots
-    const mpsToKmph  = 3.6;           // multiply m/s by this to get km/h
+    const defaultDeltaZ = 6000;   // 6000 m
+    const mpsToKnots = 1.94384;   // multiply m/s by this to get knots
+    const mpsToKmph  = 3.6;       // multiply m/s by this to get km/h
+
+    // We only realize 60% of the ideal updraft speed:
+    const alpha = 0.6;            // 60% factor
 
     function degToRad(deg) {
       return deg * (Math.PI / 180);
@@ -187,7 +191,7 @@
         }
       }
 
-      // Angle in degrees (no sign restriction, but realistically 0-90)
+      // Angle in degrees
       if (angleStr !== "") {
         thetaDeg = parseFloat(angleStr);
         if (isNaN(thetaDeg)) {
@@ -196,72 +200,68 @@
         }
       }
       
-      // We interpret "shearKnots" as: 
-      //   difference in wind speed (knots) from surface to 6 km
-      // Internally, to find shear rate (s^-1), we do:
-      //   shearRate = (shearKnots / mpsToKnots) / defaultDeltaZ
-      // Because (shearKnots / mpsToKnots) = difference in wind speed in m/s,
-      // dividing by deltaZ = 6000 m yields s^-1.
-
       /************************************************************
        * Identify which parameter is missing and solve for it
+       * Note: w = alpha * sqrt(2 * CAPE)
        ************************************************************/
+
       // 1) Missing Shear => we have CAPE and Angle
-      //    We can compute the difference in wind speed in m/s as:
-      //    ΔV = 2 * sqrt(2*CAPE) * tan(thetaRad)
-      //    Then convert ΔV (m/s) to knots.
+      //    ΔV = 2 * [alpha * sqrt(2*CAPE)] * tan(thetaRad)
       if (CAPE !== undefined && thetaDeg !== undefined && shearKnots === undefined) {
-        let w = Math.sqrt(2 * CAPE);   // updraft speed in m/s
+        let w_ideal = Math.sqrt(2 * CAPE); 
+        let w = alpha * w_ideal; // scaled updraft
         let angleRad = degToRad(thetaDeg);
         let deltaV_mps = 2 * w * Math.tan(angleRad);
-        if (deltaV_mps < 0) {
-          alert("Calculated wind speed difference is negative. Check inputs!");
-          return;
-        }
+
+        // Convert ΔV (m/s) to knots
         shearKnots = deltaV_mps * mpsToKnots;
 
       // 2) Missing CAPE => we have Shear (knots) and Angle
-      //    ΔV (m/s) = shearKnots / mpsToKnots
-      //    ΔV = 2 * sqrt(2*CAPE) * tan(theta)
-      //    => sqrt(2*CAPE) = ΔV / [2 * tan(theta)]
-      //    => CAPE = 0.5 * [ΔV / (tan(theta))]^2
+      //    deltaV_mps = shearKnots / mpsToKnots
+      //    deltaV_mps = 2 * alpha * sqrt(2*CAPE) * tan(angleRad)
+      //    => sqrt(2*CAPE) = deltaV_mps / [2 * alpha * tan(angleRad)]
+      //    => CAPE = 0.5 * [deltaV_mps / (alpha * tan(angleRad))]^2
       } else if (shearKnots !== undefined && thetaDeg !== undefined && CAPE === undefined) {
         let angleRad = degToRad(thetaDeg);
         if (angleRad === 0) {
           alert("Angle cannot be 0 if solving for CAPE (division by zero).");
           return;
         }
+
         let deltaV_mps = shearKnots / mpsToKnots;
-        // Solve for CAPE
-        // deltaV_mps = 2 * sqrt(2*CAPE) * tan(angleRad)
-        // => sqrt(2*CAPE) = deltaV_mps / [2 * tan(angleRad)]
-        let denom = 2 * Math.tan(angleRad);
+        let denom = 2 * alpha * Math.tan(angleRad);
         if (denom === 0) {
           alert("tan(Angle) is 0, cannot solve for CAPE. Check angle input.");
           return;
         }
+
         let term = deltaV_mps / denom; 
+        // sqrt(2*CAPE) = term
+        // => CAPE = 0.5 * term^2
         CAPE = 0.5 * (term * term);
 
       // 3) Missing Angle => we have CAPE and Shear (knots)
       //    deltaV_mps = shearKnots / mpsToKnots
-      //    deltaV_mps = 2 * sqrt(2*CAPE) * tan(theta)
-      //    => tan(theta) = deltaV_mps / [2 * sqrt(2*CAPE)]
+      //    deltaV_mps = 2 * alpha * sqrt(2*CAPE) * tan(theta)
+      //    => tan(theta) = deltaV_mps / [2 * alpha * sqrt(2*CAPE)]
       } else if (CAPE !== undefined && shearKnots !== undefined && thetaDeg === undefined) {
         let deltaV_mps = shearKnots / mpsToKnots;
-        let w = Math.sqrt(2 * CAPE);
-        let ratio = deltaV_mps / (2 * w); // this is tan(theta)
+        let w_ideal = Math.sqrt(2 * CAPE);
+        let w = alpha * w_ideal;
+
+        let ratio = deltaV_mps / (2 * w); // tan(theta)
         let angleRad = Math.atan(ratio);
         thetaDeg = radToDeg(angleRad);
       }
 
       /************************************************************
        * Now we have all three: CAPE, shearKnots, thetaDeg
-       * Compute Updraft Speed (w) and Effective Wind (U_eff)
+       * Compute final Updraft Speed (w) and Effective Wind (U_eff)
        ************************************************************/
-      let w = Math.sqrt(2 * CAPE);          // updraft speed in m/s
+      let w_ideal = Math.sqrt(2 * CAPE);
+      let w = alpha * w_ideal;          // scaled updraft
       let angleRad = degToRad(thetaDeg);
-      let U_eff = w * Math.tan(angleRad);   // "effective advective wind" in m/s
+      let U_eff = w * Math.tan(angleRad); // "effective advective wind"
 
       // Convert speeds for display
       let w_knots  = w * mpsToKnots;
@@ -272,7 +272,6 @@
       /************************************************************
        * Display the results
        ************************************************************/
-      // Round and show the final values
       document.getElementById("capeVal").textContent     = round(CAPE, 2);
       document.getElementById("shearVal").textContent    = round(shearKnots, 2);
       document.getElementById("angleVal").textContent    = round(thetaDeg, 2);
@@ -287,14 +286,14 @@
 
       // Explanation of the relationships
       let explanationText = 
-        "Here, 'Shear' is the wind speed difference between surface and 6 km, in knots.<br>" +
+        "We only use <strong>60% of the theoretical updraft speed</strong> (" + 
+        "<span class='formula'>w = 0.6 × √(2 × CAPE)</span>).<br><br>" +
+        "Here, 'Shear' is the total wind speed difference from the surface to 6 km, in knots.<br>" +
         "<strong>Key relationships:</strong><br>" +
-        "<span class='formula'>w = √(2 × CAPE)</span><br>" +
-        "<span class='formula'>U<sub>eff</sub> = w × tan(θ)</span><br>" +
-        "We convert Shear (knots) ↔ ΔV (m/s) internally for these formulas.<br><br>" +
-        "If one parameter was missing, we solved it from the other two using:<br>" +
-        "<span class='formula'>ΔV = 2 × √(2×CAPE) × tan(θ)</span>";
-
+        "<span class='formula'>ΔV = 2 × w × tan(θ)</span>, where <em>w</em> is scaled by 0.6.<br>" +
+        "We convert Shear (knots) ↔ ∆V (m/s) internally for these formulas.<br><br>" +
+        "If one parameter was missing, we solved it from the other two.";
+      
       document.getElementById("explanation").innerHTML = explanationText;
       document.getElementById("result").style.display = "block";
     });
