@@ -1,76 +1,101 @@
-# Storm Calculator
+# Storm Calculator: CAPE Efficiency and Missing Parameter Solver
 
-The **Storm Calculator** is a web-based tool for solving key storm dynamics parameters (CAPE, bulk wind shear, and tilt angle) based on a set of physical relationships used in convective meteorology. This tool calculates the effective updraft speed from CAPE while dynamically adjusting for air density changes with altitude. It then uses this effective updraft to derive the storm shear and tilt angle relationships.
-
-> **Key Features:**
-> - **Dynamic Air Density:** Computes air density at the storm height using a simplified barometric formula.
-> - **Drag-Adjusted Updraft Speed:** Adjusts the ideal updraft speed (√(2×CAPE)) by a 60% realization factor and a drag factor depending on storm height and air density.
-> - **Interactive Input:** Solve for exactly two parameters (CAPE, shear [in knots], or tilt angle) to determine the third.
-> - **Built-in Iterative Solver:** Uses a bisection method to solve for CAPE when it is the missing parameter.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Installation and Usage](#installation-and-usage)
-- [Code Explanation](#code-explanation)
-- [Contributing](#contributing)
-- [License](#license)
+This is a dynamic storm calculator designed for field meteorologists and researchers. The tool accepts exactly two of three key storm parameters and an optional lightning strikes value, then "solves" for the missing parameter and calculates the effective updraft speed along with other derived values.
 
 ## Overview
 
-The calculations implemented in this tool are based on the following relationships:
+The storm calculator uses the following key relationships:
 
-- **Updraft Speed:**  
-  The ideal updraft speed is calculated as:  
-  \[
-  w_{\text{ideal}} = \sqrt{2 \times \text{CAPE}}
-  \]
-  Only 60% of this theoretical speed is realized, so:
-  \[
-  w = \alpha \times \sqrt{2 \times \text{CAPE}} \quad (\alpha = 0.6)
-  \]
+1. **Effective Updraft Speed Calculation:**
 
-- **Drag Factor:**  
-  The effective updraft is further reduced by a drag factor:  
-  \[
-  D = 1 - \frac{C_d \times \rho(z) \times z}{k}
-  \]
-  where:
-  - \( C_d = 0.8 \) is the drag coefficient,
-  - \( \rho(z) \) is the air density computed at the storm height \( z \),
-  - \( k = 1 \times 10^6 \) is a scaling constant.
+   The updraft speed (\(w\)) is given by:
+   \[
+   w = \alpha \times \sqrt{2 \times \text{CAPE}} \times D
+   \]
+   - **CAPE (J/kg):** Convective Available Potential Energy.
+   - **\(\alpha\) (Efficiency Factor):** Derived from the lightning strikes per minute (capped at 90%).
+   - **\(D\) (Drag Factor):** A multiplier computed from the storm height, which is itself a function of CAPE.
+   
+2. **Effective Advective Wind Relationship:**
+   
+   The effective side wind that helps tilt the storm is given by:
+   \[
+   U_{\text{eff}} = w \times \tan(\theta)
+   \]
+   - **\(\theta\) (Storm Tilt Angle in degrees):** Observed tilt of the storm.
+
+3. **Storm Height Calculation:**
+   
+   If CAPE is available, the storm height is computed as:
+   \[
+   \text{Storm Height} = 4000 + 2\sqrt{\text{CAPE}} \quad \text{(in meters)}
+   \]
+   If CAPE is missing, a default height of 4000 m is assumed.
+
+4. **Input Requirements:**
+   
+   - Exactly **two** of the following three inputs must be provided:
+     - **CAPE** (J/kg)
+     - **Bulk Wind Shear** (in knots)
+     - **Storm Tilt Angle** (in degrees)
+   - Optionally, you can enter the lightning strikes per minute (default is 50 if not provided), which influences the efficiency factor \(\alpha\).
+
+5. **Missing Parameter Solution:**
+   
+   Depending on which parameter is missing, the calculator uses the relationships defined above to solve for it:
+   - If **Angle** is missing, it uses the provided CAPE and shear.
+   - If **Shear** is missing, it solves based on CAPE and tilt.
+   - If **CAPE** is missing, it assumes a default storm height (4000 m) and computes CAPE from the provided shear and tilt.
+
+6. **Units and Conversions:**
+   
+   The effective updraft speed is presented in:
+   - Meters per second (m/s)
+   - Knots (conversion factor: 1 m/s ≈ 1.94384 knots)
+   - Kilometers per hour (km/h) (conversion factor: 1 m/s ≈ 3.6 km/h)
+
+## How It Works (In Plain Language)
+
+1. **User Inputs:**
+   - Enter exactly **two** out of the following:
+     - CAPE (the energy available for a storm, in J/kg)
+     - Bulk Wind Shear (the change in wind speed with height, in knots)
+     - Storm Tilt Angle (how much the storm is leaning, in degrees)
+   - Optionally, you can provide the number of lightning strikes per minute; this value adjusts the efficiency factor \( \alpha \), which is capped at 90%.
+
+2. **Calculations:**
+   - The tool calculates the ideal updraft speed from CAPE using the formula \( \sqrt{2 \times \text{CAPE}} \).
+   - This ideal speed is then reduced by the efficiency factor (from lightning activity) and adjusted by a drag factor, which is computed based on the storm height.
+   - The effective updraft speed is finally used along with the storm tilt to derive the effective advective wind (\( U_{\text{eff}} \)).
+
+3. **Output:**
+   - The calculator displays all three key parameters (CAPE, shear, and tilt) along with the computed efficiency, the storm height, and the effective updraft speed, with wind speed conversions in m/s, knots, and km/h.
+
+## Files
+
+- **index.html**: The main HTML file that contains the user interface, CSS styling, and JavaScript logic for the calculator.
+
+
+## Usage Example
+
+- If you input:
+  - **CAPE** = 2000 J/kg
+  - **Bulk Wind Shear** = 30 knots
+  - (Leave the Storm Tilt Angle blank)
   
-- **Storm Height:**  
-  The storm height is approximated as a function of CAPE:
-  \[
-  z = 4000 + 2\sqrt{\text{CAPE}}
-  \]
-  
-- **Shear (ΔV):**  
-  The effective wind shear is then given by:
-  \[
-  \Delta V = 2 \times w \times \tan(\theta)
-  \]
-  where \( \theta \) is the storm tilt angle.
+  The tool will calculate the missing tilt angle based on the other inputs and display:
+  - The computed tilt (in degrees)
+  - The effective updraft speed in m/s, knots, and km/h
+  - The efficiency factor and the computed storm height.
 
-If the user inputs exactly two of the three variables (CAPE, shear in knots, or tilt angle), the missing parameter is computed from the remaining two.
+## Contributing
 
-## Features
+Feel free to fork this repository and contribute improvements or fixes. Pull requests are welcome!
 
-- **Dynamic Air Density Computation:**  
-  Uses the barometric formula:
-  \[
-  \rho(z) = \rho_0 \left(\frac{T(z)}{T_0}\right)^{\frac{g}{R \cdot L} - 1}
-  \]
-  where the temperature at altitude \( T(z) \) is given by:
-  \[
-  T(z) = T_0 - L \times z
-  \]
+## License
 
-- **Interactive Web Interface:**  
-  A clean user interface built with HTML, CSS, and JavaScript allows users to input values and view results.
+This project is provided under the MIT License.
 
-- **Bisection Method for CAPE:**  
-  When CAPE is the missing variable, a bisection solver is employed to handle the nonlinear dependency in the calculation.
+---
 
+_Enjoy using the Storm Calculator to better understand your storm observations!_
