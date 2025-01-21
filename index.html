@@ -79,12 +79,26 @@
 <body>
   <div class="container">
     <h1>Storm Calculator</h1>
-    <h2>Dynamic CAPE Efficiency</h2>
+    <h2>Dynamic CAPE Efficiency & Missing Parameter Solver</h2>
     <div class="info">
-      <p><strong>Instructions:</strong> Enter <em>exactly two</em> of the three inputs below and optionally the number of lightning strikes per minute. The script will calculate the missing parameter and CAPE efficiency, capped at 90%.</p>
-      <p>Updraft speed is calculated as:</p>
-      <p class="formula">w = α × √(2 × CAPE) × D</p>
-      <p>where \( \alpha \) (efficiency) depends on lightning strikes per minute, capped at 90%, and \( D \) is the drag factor.</p>
+      <p><strong>Instructions:</strong> Enter <em>exactly two</em> of the three inputs below (CAPE, Bulk Wind Shear in knots, and Storm Tilt Angle in degrees). Optionally, enter the lightning strikes per minute. The script will calculate the missing parameter and the CAPE efficiency (<em>α</em>), capped at 90%.<br><br>
+      The underlying relationship is assumed to be:
+      </p>
+      <p class="formula">
+        w = α × √(2 × CAPE) × D
+      </p>
+      <p>
+        where D is a drag factor (function of storm height) and the effective side wind is related by:
+      </p>
+      <p class="formula">
+        Uₑff = w × tan(θ)
+      </p>
+      <p>
+        (Note: Bulk wind shear is taken here as Uₑff in knots.)  
+        If CAPE is given, storm height is computed as: <br>
+        stormHeight = 4000 + 2×√(CAPE) (in meters).<br>
+        If CAPE is missing, a default storm height of 4000 m is assumed.
+      </p>
     </div>
 
     <!-- Inputs -->
@@ -110,6 +124,7 @@
         <strong>Shear:</strong> <span id="shearVal"></span> knots<br>
         <strong>Angle (θ):</strong> <span id="angleVal"></span> °<br>
         <strong>Efficiency (α):</strong> <span id="efficiency"></span><br>
+        <strong>Storm Height:</strong> <span id="heightVal"></span> m
       </p>
       <p><strong>Effective Updraft Speed (w):</strong></p>
       <ul>
@@ -127,14 +142,13 @@
      ************************************************************/
     const mpsToKnots = 1.94384;
     const mpsToKmph = 3.6;
-
-    const dragCoefficient = 0.8; // Drag coefficient
-    const dragScalingConstant = 1e6; // Scaling constant for drag
-    const seaLevelAirDensity = 1.225; // Air density at sea level (kg/m³)
-    const T0 = 288.15; // Standard temperature at sea level (K)
-    const L = 0.0065; // Lapse rate (K/m)
-    const g = 9.80665; // Gravitational acceleration (m/s²)
-    const R = 287.058; // Specific gas constant for dry air (J/kg·K)
+    const dragCoefficient = 0.8;
+    const dragScalingConstant = 1e6;
+    const seaLevelAirDensity = 1.225;
+    const T0 = 288.15;
+    const L = 0.0065;
+    const g = 9.80665;
+    const R = 287.058;
 
     function degToRad(deg) {
       return deg * (Math.PI / 180);
@@ -146,58 +160,171 @@
       return Number(Math.round(value + "e" + decimals) + "e-" + decimals);
     }
 
+    // Compute air density at a given height (meters)
     function calculateAirDensity(height) {
       const T = T0 - L * height;
-      if (T <= 0) return 0; // safeguard
+      if (T <= 0) return 0;
       const exponent = (g / (R * L)) - 1;
       return seaLevelAirDensity * Math.pow((T / T0), exponent);
     }
 
+    // Compute storm height from CAPE (if available)
     function calculateStormHeight(cape) {
+      // When CAPE is available: stormHeight = 4000 + 2*sqrt(CAPE)
       return 4000 + 2 * Math.sqrt(cape);
     }
 
-    function computeEffectiveUpdraft(cape, strikesPerMinute = 50, maxEfficiency = 0.9) {
-      const wIdeal = Math.sqrt(2 * cape);
-      const stormHeight = calculateStormHeight(cape);
-      const airDensity = calculateAirDensity(stormHeight);
-      let dragFactor = 1 - (dragCoefficient * airDensity * stormHeight / dragScalingConstant);
-      dragFactor = Math.max(0, dragFactor);
-      let efficiency = Math.min(strikesPerMinute / 100, maxEfficiency);
-      const wEff = efficiency * wIdeal * dragFactor;
-      return { wEff, stormHeight, airDensity, dragFactor, efficiency };
+    // Compute effective updraft based on CAPE, efficiency, and drag factor.
+    // If CAPE is known, stormHeight and dragFactor are computed normally;
+    // Otherwise (if CAPE is missing), we assume default stormHeight = 4000 m and dragFactor = 1.
+    function computeEffectiveUpdraft(cape, efficiency) {
+      let wIdeal, stormHeight, airDensity, dragFactor;
+      if (cape !== undefined) {
+        wIdeal = Math.sqrt(2 * cape);
+        stormHeight = calculateStormHeight(cape);
+        airDensity = calculateAirDensity(stormHeight);
+        dragFactor = 1 - (dragCoefficient * airDensity * stormHeight / dragScalingConstant);
+        dragFactor = Math.max(0, dragFactor);
+      } else {
+        // Default assumption when CAPE is missing
+        stormHeight = 4000;
+        wIdeal = undefined;
+        dragFactor = 1;
+      }
+      // Effective updraft speed:
+      let wEff = (wIdeal !== undefined) ? efficiency * wIdeal * dragFactor : undefined;
+      return { wEff, stormHeight, dragFactor };
     }
 
     /************************************************************
      * Main Calculation Logic
      ************************************************************/
     document.getElementById("calcButton").addEventListener("click", function () {
+      // Get input strings and trim them
       let capeStr = document.getElementById("cape").value.trim();
       let shearStr = document.getElementById("shear").value.trim();
       let angleStr = document.getElementById("angle").value.trim();
       let strikesStr = document.getElementById("strikes").value.trim();
 
+      // Parse lightning strikes (default 50 if empty)
       let strikesPerMinute = strikesStr !== "" ? parseInt(strikesStr) : 50;
-
       if (strikesPerMinute < 0) {
         alert("Lightning strikes per minute must be non-negative.");
         return;
       }
 
-      let CAPE = capeStr !== "" ? parseFloat(capeStr) : undefined;
-      if (CAPE !== undefined && (isNaN(CAPE) || CAPE < 0)) {
-        alert("Invalid CAPE. Must be a non-negative number.");
+      // Determine which of the three main inputs have been provided.
+      let providedCAPE = (capeStr !== "") ? parseFloat(capeStr) : undefined;
+      let providedShear = (shearStr !== "") ? parseFloat(shearStr) : undefined;
+      let providedAngle = (angleStr !== "") ? parseFloat(angleStr) : undefined;
+
+      // Count the number of provided inputs.
+      let count = 0;
+      if (providedCAPE !== undefined) count++;
+      if (providedShear !== undefined) count++;
+      if (providedAngle !== undefined) count++;
+
+      if (count !== 2) {
+        alert("Please enter exactly two of the three inputs: CAPE, Shear, and Angle.");
         return;
       }
 
-      const { wEff, stormHeight, airDensity, dragFactor, efficiency } =
-        computeEffectiveUpdraft(CAPE, strikesPerMinute);
+      // Efficiency (α) is computed based on lightning strikes.
+      let maxEfficiency = 0.9;
+      let efficiency = Math.min(strikesPerMinute / 100, maxEfficiency);
 
-      document.getElementById("capeVal").textContent = round(CAPE, 2);
+      // We'll eventually display computed values for all three.
+      let computedCAPE = providedCAPE;
+      let computedShear = providedShear;
+      let computedAngle = providedAngle; // in degrees
+
+      // Case 1: Missing Angle; CAPE and Shear are provided.
+      if (providedAngle === undefined) {
+        // Compute effective updraft speed from CAPE.
+        let { wEff, stormHeight, dragFactor } = computeEffectiveUpdraft(providedCAPE, efficiency);
+        if (wEff === 0) {
+          alert("Effective updraft speed is zero, cannot solve for angle.");
+          return;
+        }
+        // Convert provided shear from knots to m/s.
+        let shear_ms = providedShear / mpsToKnots;
+        // Relationship: shear_ms = wEff * tan(angle)
+        let tanAngle = shear_ms / wEff;
+        computedAngle = radToDeg(Math.atan(tanAngle));
+      }
+      // Case 2: Missing Shear; CAPE and Angle are provided.
+      else if (providedShear === undefined) {
+        let { wEff, stormHeight, dragFactor } = computeEffectiveUpdraft(providedCAPE, efficiency);
+        // Relationship: shear_ms = wEff * tan(angle)
+        let angleRad = degToRad(providedAngle);
+        let shear_ms = wEff * Math.tan(angleRad);
+        // Convert shear to knots.
+        computedShear = shear_ms * mpsToKnots;
+      }
+      // Case 3: Missing CAPE; Shear and Angle are provided.
+      else if (providedCAPE === undefined) {
+        // Use provided shear (in knots) and angle to calculate effective updraft speed.
+        let angleRad = degToRad(providedAngle);
+        let shear_ms = providedShear / mpsToKnots;
+        // Relationship: shear_ms = wEff * tan(angle)
+        // Also: wEff = efficiency * sqrt(2 * CAPE) * D.
+        // When CAPE is missing, assume default stormHeight = 4000 m and D = dragFactor_default.
+        let defaultStormHeight = 4000;
+        let airDensityDefault = calculateAirDensity(defaultStormHeight);
+        let dragFactorDefault = 1 - (dragCoefficient * airDensityDefault * defaultStormHeight / dragScalingConstant);
+        dragFactorDefault = Math.max(0, dragFactorDefault);
+        // Solve for sqrt(2 * CAPE):
+        let sqrtTerm = shear_ms / (efficiency * dragFactorDefault * Math.tan(angleRad));
+        computedCAPE = Math.pow(sqrtTerm, 2) / 2;
+      }
+
+      // Now, if CAPE is known, compute effective updraft speed.
+      let finalUpdraft;
+      let finalStormHeight;
+      if (computedCAPE !== undefined) {
+        let result = computeEffectiveUpdraft(computedCAPE, efficiency);
+        finalUpdraft = result.wEff;
+        finalStormHeight = result.stormHeight;
+      } else {
+        finalUpdraft = undefined;
+        finalStormHeight = 4000; // default if CAPE missing
+      }
+
+      // Display results.
+      if (computedCAPE !== undefined)
+        document.getElementById("capeVal").textContent = round(computedCAPE, 2);
+      else
+        document.getElementById("capeVal").textContent = "Not provided (computed)";
+      
+      if (computedShear !== undefined)
+        document.getElementById("shearVal").textContent = round(computedShear, 2);
+      else
+        document.getElementById("shearVal").textContent = "Not provided (computed)";
+      
+      if (computedAngle !== undefined)
+        document.getElementById("angleVal").textContent = round(computedAngle, 2);
+      else
+        document.getElementById("angleVal").textContent = "Not provided (computed)";
+      
       document.getElementById("efficiency").textContent = round(efficiency * 100, 2) + "%";
-      document.getElementById("updraft_mps").textContent = round(wEff, 2);
-      document.getElementById("updraft_knots").textContent = round(wEff * mpsToKnots, 2);
-      document.getElementById("updraft_kmph").textContent = round(wEff * mpsToKmph, 2);
+      document.getElementById("heightVal").textContent = round(finalStormHeight, 2);
+      if (finalUpdraft !== undefined) {
+        document.getElementById("updraft_mps").textContent = round(finalUpdraft, 2);
+        document.getElementById("updraft_knots").textContent = round(finalUpdraft * mpsToKnots, 2);
+        document.getElementById("updraft_kmph").textContent = round(finalUpdraft * mpsToKmph, 2);
+      } else {
+        document.getElementById("updraft_mps").textContent = "N/A";
+        document.getElementById("updraft_knots").textContent = "N/A";
+        document.getElementById("updraft_kmph").textContent = "N/A";
+      }
+      
+      let explanationText = "Using the relationship:<br>" +
+        "<span class='formula'>w = α × √(2 × CAPE) × D</span><br>" +
+        "and<br>" +
+        "<span class='formula'>Uₑff = w × tan(θ)</span><br><br>" +
+        "The missing parameter was computed accordingly.";
+      
+      document.getElementById("explanation").innerHTML = explanationText;
       document.getElementById("result").style.display = "block";
     });
   </script>
