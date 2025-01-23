@@ -1,108 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Storm Calculator + Geostrophic Wind</title>
+  <meta charset="UTF-8">
+  <title>All-in-One Storm Survey Calculator (with PDF)</title>
   <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      font-family: Arial, sans-serif;
       margin: 2rem;
-      background-color: #f0f8ff;
-      line-height: 1.6;
+      background: #f2f8ff;
     }
     .container {
-      background: #fff;
-      padding: 2rem;
-      border-radius: 10px;
       max-width: 900px;
       margin: auto;
-      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
-    h1, h2, h3 {
+    h1, h2 {
       text-align: center;
       color: #333;
+      margin-bottom: 1rem;
     }
     label {
       display: block;
       margin-top: 1.2rem;
-      color: #333;
+      font-weight: 600;
     }
     input[type="number"] {
+      display: block;
       width: 100%;
       padding: 0.5rem;
+      font-size: 1rem;
       margin-top: 0.3rem;
       border: 1px solid #ccc;
       border-radius: 4px;
-      font-size: 1rem;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-      font-family: monospace;
-      padding: 0.5rem;
-      margin-top: 0.3rem;
     }
     .unknown-option {
       font-size: 0.9rem;
       margin-top: 0.3rem;
     }
     button {
-      display: block;
       width: 100%;
+      font-size: 1rem;
       padding: 0.8rem;
-      background: #007acc;
-      color: #fff;
+      margin-top: 1.2rem;
       border: none;
       border-radius: 4px;
-      font-size: 1rem;
+      background: #007acc;
+      color: #fff;
       cursor: pointer;
-      margin-top: 1.5rem;
-      transition: background 0.3s;
     }
     button:hover {
       background: #005fa3;
     }
     .result {
       margin-top: 1.5rem;
-      padding: 1.2rem;
+      padding: 1rem;
       background: #e9f5ff;
       border: 1px solid #b3d7ff;
       border-radius: 8px;
     }
     .formula {
       background: #eef;
-      padding: 0.25rem 0.5rem;
+      padding: 2px 5px;
       border-radius: 4px;
       font-family: monospace;
       display: inline-block;
       margin: 0.2rem 0;
     }
-    .info, .geo-info {
-      background: #fff8dc;
+    .info-block {
+      margin-top: 1.5rem;
       padding: 1rem;
+      background: #fff8dc;
       border: 1px solid #f4e1a1;
       border-radius: 8px;
-      margin-top: 1.5rem;
     }
-    .sub-section {
-      background: #fffceb;
-      border: 1px solid #ffe9b9;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-top: 1.5rem;
+    .subtle {
+      color: #555;
+      font-size: 0.9rem;
+    }
+    .inline-value {
+      font-weight: 600;
+      color: #006;
+    }
+    .two-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .two-buttons button {
+      flex: 1;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Storm Calculator</h1>
-    <h2>Including Geostrophic Wind & Divergence</h2>
+    <h1>Storm Survey Calculator</h1>
+    <h2>All-in-One (CAPE, Shear, Angle, Geometry, PDF Output)</h2>
 
-    <div class="info">
-      <p><strong>Instructions:</strong> Enter <em>exactly two</em> of the three primary inputs (CAPE, Bulk Wind Shear in knots, and Storm Tilt Angle in degrees). Optionally, enter lightning strikes per minute. For any parameter you don’t know, check its “Unknown” box. This calculator then computes the missing parameter, effective updraft speed, and total shear.</p>
-      <p>This version also includes a simple geostrophic wind calculation, based on a provided 2D pressure field, to demonstrate how larger-scale wind fields could impact local shear and vertical velocity.</p>
-    </div>
+    <p class="subtle">
+      Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator finds the missing one.
+      Provide lat/lon and an elevation angle if you'd like a geometric storm height. Include lightning strikes
+      (per minute) to factor into updraft. 
+    </p>
 
     <!-- Primary Inputs -->
     <label for="cape">CAPE (J/kg):</label>
@@ -113,16 +113,22 @@
     <input type="number" id="shear" placeholder="e.g. 30" step="any" />
     <label class="unknown-option"><input type="checkbox" id="shearUnknown"> Unknown</label>
 
-    <label for="angle">Storm Tilt Angle (θ in degrees):</label>
+    <label for="angle">Storm Tilt Angle (°):</label>
     <input type="number" id="angle" placeholder="e.g. 25" step="any" />
     <label class="unknown-option"><input type="checkbox" id="angleUnknown"> Unknown</label>
 
     <label for="strikes">Lightning Strikes per Minute:</label>
     <input type="number" id="strikes" placeholder="e.g. 50" step="1" />
 
-    <!-- Optional Geographic Data -->
-    <div class="geo-info">
-      <h3>Geographic Data (Optional)</h3>
+    <div class="info-block">
+      <h3>Geographic Inputs (Optional)</h3>
+      <label for="observerLat">Observer Latitude (°):</label>
+      <input type="number" id="observerLat" placeholder="e.g. 38.5" step="any" />
+      <label class="unknown-option"><input type="checkbox" id="obsLatUnknown"> Unknown</label>
+
+      <label for="observerLon">Observer Longitude (°):</label>
+      <input type="number" id="observerLon" placeholder="e.g. -77.0" step="any" />
+
       <label for="stormLat">Storm Latitude (°):</label>
       <input type="number" id="stormLat" placeholder="e.g. 40.0" step="any" />
       <label class="unknown-option"><input type="checkbox" id="stormLatUnknown"> Unknown</label>
@@ -131,91 +137,64 @@
       <input type="number" id="stormLon" placeholder="e.g. -80.0" step="any" />
       <label class="unknown-option"><input type="checkbox" id="stormLonUnknown"> Unknown</label>
 
-      <label for="observerLat">Observer Latitude (°):</label>
-      <input type="number" id="observerLat" placeholder="e.g. 38.5" step="any" />
-      <label class="unknown-option"><input type="checkbox" id="observerLatUnknown"> Unknown</label>
-
-      <label for="observerLon">Observer Longitude (°):</label>
-      <input type="number" id="observerLon" placeholder="e.g. -77.0" step="any" />
-
       <label for="elevAngle">Elevation Angle from Observer (°):</label>
       <input type="number" id="elevAngle" placeholder="e.g. 10" step="any" />
       <label class="unknown-option"><input type="checkbox" id="elevAngleUnknown"> Unknown</label>
     </div>
 
-    <!-- Additional Section: Geostrophic Wind Inputs -->
-    <div class="sub-section">
-      <h3>Geostrophic Wind & Divergence (Optional)</h3>
-      <p>Provide a 2D pressure field (Pa) for a simple demonstration of geostrophic wind and divergence-based vertical velocity. In real life, you would retrieve this from your model outputs or observational grids.</p>
-
-      <!-- Grid spacing -->
-      <label for="gridX">Grid Spacing in X (m):</label>
-      <input type="number" id="gridX" placeholder="e.g. 10000" step="any" />
-      <label for="gridY">Grid Spacing in Y (m):</label>
-      <input type="number" id="gridY" placeholder="e.g. 10000" step="any" />
-
-      <label for="pressureData">
-        Enter Pressure Field as rows of comma-separated values (Pa).<br>
-        Example (3x3):
-        <br>100000, 100010, 100020<br>
-        99990, 100000, 100010<br>
-        99980, 99990, 100000
-      </label>
-      <textarea id="pressureData" placeholder="Paste your pressure data grid here..."></textarea>
-
-      <label for="pressureDp">Pressure Difference (dp in Pa) between levels:</label>
-      <input type="number" id="pressureDp" placeholder="e.g. 50" step="any" />
-
-      <!-- Output placeholders for geostrophic wind and vertical velocity -->
-      <div id="geoResults" class="result" style="display:none;">
-        <h4>Geostrophic Wind Results</h4>
-        <p>
-          <strong>Average Geostrophic U (m/s):</strong> <span id="geoU"></span><br>
-          <strong>Average Geostrophic V (m/s):</strong> <span id="geoV"></span><br>
-          <strong>Average Horizontal Divergence (1/s):</strong> <span id="divVal"></span><br>
-          <strong>Estimated Vertical Velocity (omega, Pa/s):</strong> <span id="omegaVal"></span>
-        </p>
-      </div>
+    <div class="two-buttons">
+      <button id="calcButton">Calculate</button>
+      <button id="pdfButton">Generate PDF</button>
     </div>
 
-    <button id="calcButton">Calculate</button>
-
-    <!-- Results -->
-    <div id="result" class="result" style="display:none;">
+    <!-- Results Panel -->
+    <div id="resultPanel" class="result" style="display:none;">
       <h3>Storm Results</h3>
       <p>
-        <strong>CAPE:</strong> <span id="capeVal"></span> J/kg<br>
-        <strong>Shear (basic or computed):</strong> <span id="shearVal"></span> knots<br>
-        <strong>Angle (θ):</strong> <span id="angleVal"></span> °<br>
-        <strong>Effective Updraft Speed (w):</strong> <span id="updraft_mps"></span><br>
-        <strong>Total Effective Shear:</strong> <span id="totalShear"></span> knots<br>
-        <strong>Storm Height:</strong> <span id="heightVal"></span><br>
-        <strong>Rotational Shear Contribution:</strong> <span id="rotationShear"></span>
+        <strong>CAPE:</strong> <span id="resCAPE"></span><br>
+        <strong>Shear (knots):</strong> <span id="resShear"></span><br>
+        <strong>Angle (°):</strong> <span id="resAngle"></span><br>
+        <strong>Updraft Speed (w):</strong> <span id="resUpdraft"></span><br>
+        <strong>Storm Height (m):</strong> <span id="resHeight"></span><br>
+        <strong>Total Shear (knots):</strong> <span id="resTotalShear"></span><br>
+        <strong>Rotation Shear (knots):</strong> <span id="resRotShear"></span><br>
       </p>
-      <p id="explanation"></p>
+    </div>
+
+    <div id="infoBlock" class="info-block" style="display:none;">
+      <h4>Unified Equation Summary</h4>
+      <p>
+        We combine geometry (lat/lon + elevation angle) to get storm distance 
+        <span class="formula">R</span> and height 
+        <span class="formula">H</span>, then compute or invert
+        <span class="formula">w = √(2 · CAPE) · D · (1 + γ·(strikes/100))</span>,
+        relate updraft <span class="formula">w</span> to shear 
+        <span class="formula">U = w·tan(θ)</span>, and if needed
+        <span class="formula">CAPE</span> is solved by inverting w. Finally, add rotational shear:
+        <span class="formula">U<sub>rot</sub> = 2Ω·sin(lat)·R</span>.
+      </p>
     </div>
   </div>
+
+  <!-- Include jsPDF from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+          integrity="sha512-KO2+IBZ6Hb8OaY0nS8jNktEtmLLn3nsujh1I82D0phWC3UqCPmSL6+8CsH6XSNJIg7BmPoZepw7V6WJCIi3QEw=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>
     /************************************************************
      * Constants & Helper Functions
      ************************************************************/
     const mpsToKnots = 1.94384;
-    const mpsToKmph = 3.6;
     const dragCoefficient = 0.8;
     const dragScalingConstant = 1e6;
     const seaLevelAirDensity = 1.225;
-    const T0 = 288.15;
-    const L = 0.0065;
-    const g = 9.80665;
-    const R = 287.058;
+    const T0 = 288.15;    // K
+    const L = 0.0065;     // K/m
+    const g = 9.80665;    // m/s^2
+    const R_ = 287.058;   // J/(kg·K)
     const Omega = 7.2921e-5; // Earth's rotation rate in rad/s
-
-    // For lightning scaling (γ parameter)
-    const lightningGamma = 0.5; // Adjust sensitivity of lightning effect
-
-    // For geostrophic calculations
-    const fConstant = 1e-4; // typical mid-lat Coriolis parameter (s^-1), if not computed from lat
+    const lightningGamma = 0.5;  // effect of lightning on updraft
 
     function degToRad(deg) {
       return deg * (Math.PI / 180);
@@ -223,127 +202,48 @@
     function radToDeg(rad) {
       return rad * (180 / Math.PI);
     }
-    function round(value, decimals) {
+    function round(value, decimals=2) {
       return Number(Math.round(value + "e" + decimals) + "e-" + decimals);
     }
 
-    // Compute air density at a given height (in meters)
-    function calculateAirDensity(height) {
-      const T = T0 - L * height;
-      if (T <= 0) return 0;
-      const exponent = (g / (R * L)) - 1;
-      return seaLevelAirDensity * Math.pow((T / T0), exponent);
-    }
-
-    // Default storm height using CAPE (if geo not provided)
-    function defaultStormHeight(cape) {
-      return 4000 + 2 * Math.sqrt(cape);
-    }
-
-    // Haversine formula to get horizontal distance in meters
+    // Basic Haversine
     function haversine(lat1, lon1, lat2, lon2) {
-      const R_earth = 6371000; // radius in meters
+      const R_earth = 6371000; // meters
       let dLat = degToRad(lat2 - lat1);
       let dLon = degToRad(lon2 - lon1);
       let a = Math.sin(dLat/2) ** 2 +
-              Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) *
+              Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) * 
               Math.sin(dLon/2) ** 2;
-      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       return R_earth * c;
     }
 
+    // Calculate air density at given height
+    function airDensity(height) {
+      const T = T0 - L * height;
+      if (T <= 0) return 0;
+      const exponent = (g / (R_ * L)) - 1;
+      return seaLevelAirDensity * Math.pow((T / T0), exponent);
+    }
+
+    // Default storm height if geometry not used
+    function defaultStormHeight(cape) {
+      return 4000 + 2*Math.sqrt(cape);
+    }
+
     // Effective updraft from CAPE + lightning + drag
-    function computeEffectiveUpdraft(cape, strikes, stormHeight) {
+    function effectiveUpdraft(cape, strikes, stormHeight) {
       let wIdeal = Math.sqrt(2 * cape);
-      let airDensity = calculateAirDensity(stormHeight);
-      let dragFactor = 1 - (dragCoefficient * airDensity * stormHeight / dragScalingConstant);
+      let rho = airDensity(stormHeight);
+      let dragFactor = 1 - (dragCoefficient * rho * stormHeight / dragScalingConstant);
       dragFactor = Math.max(0, dragFactor);
-      let lightningFactor = 1 + lightningGamma * (strikes / 100);
-      let wEff = wIdeal * dragFactor * lightningFactor;
-      return { wEff, dragFactor };
+      let lightningFactor = 1 + lightningGamma*(strikes / 100);
+      return wIdeal * dragFactor * lightningFactor;
     }
 
-    /************************************************************
-     * Geostrophic Wind + Divergence (Adapted from Python snippet)
-     ************************************************************/
-    // We'll treat "pressure" as a 2D array: pressure[row][col].
-    // Inputs: pressure field 2D array, dx, dy (m).
-    function geostrophicWind(pressure, dx, dy, coriolisParam) {
-      // Returns u_g, v_g as 2D arrays
-      //   u_g = -1/f * dP/dy
-      //   v_g =  1/f * dP/dx
-      // We'll do a simple finite-difference approach for gradient.
-
-      const nx = pressure.length;
-      const ny = (nx > 0) ? pressure[0].length : 0;
-
-      let u_g = Array.from({length: nx}, () => Array(ny).fill(0));
-      let v_g = Array.from({length: nx}, () => Array(ny).fill(0));
-
-      // Gradient in the x-direction (columns)
-      // For v_g, we need dP/dx
-      // For simplicity, partial differences:
-      for (let i = 0; i < nx; i++) {
-        for (let j = 0; j < ny-1; j++) {
-          let dPdx = (pressure[i][j+1] - pressure[i][j]) / dx; // forward difference
-          v_g[i][j] = (1 / coriolisParam) * dPdx;
-        }
-        // last column can approximate or set to same as previous
-        v_g[i][ny-1] = v_g[i][ny-2];
-      }
-
-      // Gradient in the y-direction (rows)
-      // For u_g, we need dP/dy
-      for (let j = 0; j < ny; j++) {
-        for (let i = 0; i < nx-1; i++) {
-          let dPdy = (pressure[i+1][j] - pressure[i][j]) / dy;
-          // note the negative sign
-          u_g[i][j] = -(1 / coriolisParam) * dPdy;
-        }
-        // last row approximate:
-        u_g[nx-1][j] = u_g[nx-2][j];
-      }
-
-      return {u_g, v_g};
-    }
-
-    // Horizontal divergence
-    function horizontalDivergence(u, v, dx, dy) {
-      const nx = u.length;
-      const ny = (nx > 0) ? u[0].length : 0;
-      let div = Array.from({length: nx}, () => Array(ny).fill(0));
-      // Forward difference for simplicity
-      for (let i = 0; i < nx-1; i++) {
-        for (let j = 0; j < ny-1; j++) {
-          let dudx = (u[i][j+1] - u[i][j]) / dx;
-          let dvdy = (v[i+1][j] - v[i][j]) / dy;
-          div[i][j] = dudx + dvdy;
-        }
-      }
-      // edges can be approximated or left as 0
-      return div;
-    }
-
-    // Vertical velocity (omega) from divergence
-    //   omega = - divergence * dp
-    // If divergence is in 1/s, dp in Pa, result is Pa/s
-    function verticalVelocity(divergence, dp) {
-      const nx = divergence.length;
-      const ny = (nx > 0) ? divergence[0].length : 0;
-      let omega = Array.from({length: nx}, () => Array(ny).fill(0));
-      for (let i = 0; i < nx; i++) {
-        for (let j = 0; j < ny; j++) {
-          omega[i][j] = -divergence[i][j] * dp;
-        }
-      }
-      return omega;
-    }
-
-    /************************************************************
-     * Main Calculation Logic
-     ************************************************************/
-    document.getElementById("calcButton").addEventListener("click", function () {
-      //=== 1) Primary Storm Calculator Inputs ===
+    // Main calculation triggered by "Calculate"
+    document.getElementById("calcButton").addEventListener("click", () => {
+      // 1) Gather user inputs
       let capeStr = document.getElementById("cape").value.trim();
       let shearStr = document.getElementById("shear").value.trim();
       let angleStr = document.getElementById("angle").value.trim();
@@ -357,209 +257,186 @@
       let providedShear = (!shearUnknown && shearStr !== "") ? parseFloat(shearStr) : undefined;
       let providedAngle = (!angleUnknown && angleStr !== "") ? parseFloat(angleStr) : undefined;
 
-      // Must have exactly 2 known among (CAPE, Shear, Angle)
-      let count = 0;
-      if (providedCAPE !== undefined) count++;
-      if (providedShear !== undefined) count++;
-      if (providedAngle !== undefined) count++;
-      if (count !== 2) {
-        alert("Please ensure exactly two of the three (CAPE, Shear, Angle) are provided.");
+      // Must have exactly 2 known among CAPE, Shear, Angle
+      let knownCount = [providedCAPE, providedShear, providedAngle].filter(v => v!==undefined).length;
+      if (knownCount !== 2) {
+        alert("Please provide exactly two of: CAPE, Shear, Angle (and mark the other as Unknown).");
         return;
       }
 
-      // Lightning
-      let strikes = (strikesStr !== "") ? parseInt(strikesStr) : 50;
-      if (strikes < 0) {
-        alert("Lightning strikes per minute must be non-negative.");
-        return;
-      }
+      let strikes = (strikesStr !== "") ? parseFloat(strikesStr) : 0;
+      if (strikes < 0) strikes = 0;
 
-      //=== 2) Geographic Data (Optional) ===
+      // 2) Geographic
+      let obsLatStr = document.getElementById("observerLat").value.trim();
+      let obsLatUnknown = document.getElementById("obsLatUnknown").checked;
+      let obsLonStr = document.getElementById("observerLon").value.trim();
+
       let stormLatStr = document.getElementById("stormLat").value.trim();
-      let stormLonStr = document.getElementById("stormLon").value.trim();
-      let observerLatStr = document.getElementById("observerLat").value.trim();
-      let observerLonStr = document.getElementById("observerLon").value.trim();
-      let elevAngleStr = document.getElementById("elevAngle").value.trim();
-
       let stormLatUnknown = document.getElementById("stormLatUnknown").checked;
+      let stormLonStr = document.getElementById("stormLon").value.trim();
       let stormLonUnknown = document.getElementById("stormLonUnknown").checked;
-      let observerLatUnknown = document.getElementById("observerLatUnknown").checked;
+
+      let elevAngleStr = document.getElementById("elevAngle").value.trim();
       let elevAngleUnknown = document.getElementById("elevAngleUnknown").checked;
 
-      // Horizontal distance if lat/lon provided
-      let horizontalDistance = undefined;
-      if (!stormLatUnknown && !stormLonUnknown && !observerLatUnknown &&
-          stormLatStr !== "" && stormLonStr !== "" && observerLatStr !== "") {
-        let stormLat = parseFloat(stormLatStr);
-        let stormLon = parseFloat(stormLonStr);
-        let observerLat = parseFloat(observerLatStr);
-        let observerLon = (observerLonStr !== "") ? parseFloat(observerLonStr) : 0;
-        horizontalDistance = haversine(observerLat, observerLon, stormLat, stormLon);
+      let distance = undefined;
+      // If we have observer lat/lon & storm lat/lon, compute distance
+      if (!obsLatUnknown && !stormLatUnknown && obsLatStr && stormLatStr) {
+        let obsLat = parseFloat(obsLatStr);
+        let obsLon = (obsLonStr) ? parseFloat(obsLonStr) : 0;
+        let sLat = parseFloat(stormLatStr);
+        let sLon = (stormLonStr) ? parseFloat(stormLonStr) : 0;
+        distance = haversine(obsLat, obsLon, sLat, sLon);
       }
 
-      // Compute storm height from geo data if possible
-      let geoHeightComputed = false;
-      let finalStormHeight;
-      if (!elevAngleUnknown && elevAngleStr !== "" && horizontalDistance !== undefined) {
+      // 3) Storm Height
+      let finalStormHeight = 4000; // fallback
+      let geoHeightUsed = false;
+      if (!elevAngleUnknown && elevAngleStr && distance !== undefined) {
         let elevAngle = parseFloat(elevAngleStr);
-        finalStormHeight = horizontalDistance * Math.tan(degToRad(elevAngle));
-        geoHeightComputed = true;
+        finalStormHeight = distance * Math.tan(degToRad(elevAngle));
+        geoHeightUsed = true;
       } else if (providedCAPE !== undefined) {
         finalStormHeight = defaultStormHeight(providedCAPE);
-      } else {
-        finalStormHeight = 4000; // fallback
       }
 
-      //=== 3) Solve for the missing parameter (CAPE, Shear, or Angle) ===
+      // 4) Solve for the missing param
       let computedCAPE = providedCAPE;
-      let computedShear = providedShear;
-      let computedAngle = providedAngle; // degrees
+      let computedAngle = providedAngle;
+      let computedShearKnots = providedShear; // user gave it in knots
 
       // (a) Missing Angle
-      if (providedAngle === undefined) {
-        if (providedCAPE === undefined) {
-          alert("Cannot compute angle without CAPE for updraft calculation.");
+      if (computedAngle === undefined) {
+        // we have CAPE & Shear
+        // find w, then angle = arctan(Shear_m/s / w)
+        if (!computedCAPE) {
+          alert("Cannot compute angle without a CAPE value.");
           return;
         }
-        let { wEff } = computeEffectiveUpdraft(providedCAPE, strikes, finalStormHeight);
-        if (!wEff) {
-          alert("Effective updraft is zero; cannot solve for angle.");
-          return;
-        }
-        let shear_ms = providedShear / mpsToKnots; // convert to m/s
-        computedAngle = radToDeg(Math.atan(shear_ms / wEff));
+        let wEff = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
+        let shearMs = computedShearKnots / mpsToKnots;
+        computedAngle = radToDeg(Math.atan(shearMs / wEff));
       }
       // (b) Missing Shear
-      else if (providedShear === undefined) {
-        if (providedCAPE === undefined) {
-          alert("Cannot compute shear without CAPE for updraft.");
+      else if (computedShearKnots === undefined) {
+        // we have CAPE & angle -> find w, then shear = w * tan(angle)
+        if (!computedCAPE) {
+          alert("Cannot compute shear without a CAPE value.");
           return;
         }
-        let { wEff } = computeEffectiveUpdraft(providedCAPE, strikes, finalStormHeight);
-        let angleRad = degToRad(providedAngle);
-        let shear_ms = wEff * Math.tan(angleRad);
-        computedShear = shear_ms * mpsToKnots;
+        let wEff = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
+        let angleRad = degToRad(computedAngle);
+        let shearMs = wEff * Math.tan(angleRad);
+        computedShearKnots = shearMs * mpsToKnots;
       }
       // (c) Missing CAPE
-      else if (providedCAPE === undefined) {
-        // Invert w = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))
-        // and U_basic = w * tan(angle)
-        // => CAPE = [ (U_basic / tan(angle)) / (D*(1 + ...)) ]^2 / 2
-        let defaultHeight = 4000; // fallback
-        let airDensityDefault = calculateAirDensity(defaultHeight);
-        let dragFactorDefault = 1 - (dragCoefficient * airDensityDefault * defaultHeight / dragScalingConstant);
-        dragFactorDefault = Math.max(0, dragFactorDefault);
+      else if (computedCAPE === undefined) {
+        // we have Shear (knots) & angle -> invert updraft to find CAPE
+        let angleRad = degToRad(computedAngle);
+        let shearMs = computedShearKnots / mpsToKnots;
+        // w_basic = shearMs / tan(angle)
+        // w_basic = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))
+        // => CAPE = ...
+        // But we need an estimate of D. For that, we need a height guess (or iterative approach).
+        // We'll pick a default height ~4000m if no geometry. Let's do that:
+        let Hguess = 4000;
+        // or if geometry is known, use that:
+        if (geoHeightUsed) Hguess = finalStormHeight;
+
+        let rho = airDensity(Hguess);
+        let dragFactor = Math.max(0, 1 - (dragCoefficient*rho*Hguess/dragScalingConstant));
         let lightningFactor = 1 + lightningGamma*(strikes/100);
-        let angleRad = degToRad(providedAngle);
-        let shear_ms = providedShear / mpsToKnots;
-        let wBasic = shear_ms / Math.tan(angleRad);
-        let sqrtTerm = wBasic / (dragFactorDefault*lightningFactor);
+
+        let wBasic = shearMs / Math.tan(angleRad);
+        let sqrtTerm = wBasic / (dragFactor*lightningFactor);
+        // cap ~ (sqrtTerm^2)/2
         computedCAPE = (Math.pow(sqrtTerm, 2))/2;
-      }
-
-      // Compute final updraft speed
-      let finalUpdraft = 0;
-      if (computedCAPE !== undefined) {
-        let updraftData = computeEffectiveUpdraft(computedCAPE, strikes, finalStormHeight);
-        finalUpdraft = updraftData.wEff;
-      }
-
-      // Basic shear from finalUpdraft & angle
-      let angleRadFinal = degToRad(computedAngle);
-      let basicShear_ms = finalUpdraft * Math.tan(angleRadFinal);
-      let basicShear_knots = basicShear_ms * mpsToKnots;
-
-      // Geolocation correction for rotation
-      let rotationalShear_ms = 0;
-      if (horizontalDistance !== undefined && !observerLatUnknown && observerLatStr !== "") {
-        let observerLatVal = parseFloat(observerLatStr);
-        let fVal = 2 * Omega * Math.sin(degToRad(observerLatVal));
-        rotationalShear_ms = fVal * horizontalDistance;
-      }
-      let rotationalShear_knots = rotationalShear_ms * mpsToKnots;
-      let totalShear_knots = basicShear_knots + rotationalShear_knots;
-
-      //=== 4) Geostrophic Wind & Divergence (if user inputs a 2D pressure field) ===
-      let dxStr = document.getElementById("gridX").value.trim();
-      let dyStr = document.getElementById("gridY").value.trim();
-      let pressureRaw = document.getElementById("pressureData").value.trim();
-      let dpStr = document.getElementById("pressureDp").value.trim();
-
-      if (dxStr !== "" && dyStr !== "" && pressureRaw !== "" && dpStr !== "") {
-        let dxVal = parseFloat(dxStr);
-        let dyVal = parseFloat(dyStr);
-        let dpVal = parseFloat(dpStr);
-
-        // Convert pressureRaw into a 2D array
-        // Each line => row, comma-separated => columns
-        let lines = pressureRaw.split("\n");
-        let pressure2D = lines.map(line => {
-          let cols = line.split(",").map(v => parseFloat(v.trim()));
-          return cols;
-        });
-
-        let geo = geostrophicWind(pressure2D, dxVal, dyVal, fConstant);
-        let div2D = horizontalDivergence(geo.u_g, geo.v_g, dxVal, dyVal);
-        let omega2D = verticalVelocity(div2D, dpVal);
-
-        // Compute average
-        const nx = pressure2D.length;
-        const ny = (nx>0)? pressure2D[0].length:0;
-        let sumU=0, sumV=0, sumDiv=0, sumOmega=0;
-        let count = 0;
-        for (let i=0; i<nx; i++){
-          for (let j=0; j<ny; j++){
-            sumU += geo.u_g[i][j];
-            sumV += geo.v_g[i][j];
-            sumDiv += div2D[i][j];
-            sumOmega += omega2D[i][j];
-            count++;
-          }
+        // now let's refine finalStormHeight using that new CAPE:
+        if (!geoHeightUsed) {
+          finalStormHeight = defaultStormHeight(computedCAPE);
         }
-        let avgU = sumU / count;
-        let avgV = sumV / count;
-        let avgDiv = sumDiv / count;
-        let avgOmega = sumOmega / count;
-
-        document.getElementById("geoU").textContent = round(avgU, 3);
-        document.getElementById("geoV").textContent = round(avgV, 3);
-        document.getElementById("divVal").textContent = round(avgDiv, 5);
-        document.getElementById("omegaVal").textContent = round(avgOmega, 5);
-
-        document.getElementById("geoResults").style.display = "block";
-      } else {
-        document.getElementById("geoResults").style.display = "none";
       }
 
-      //=== 5) Display Storm Calculator Results ===
-      document.getElementById("capeVal").textContent = (computedCAPE !== undefined) ? round(computedCAPE, 2) : "N/A";
-      document.getElementById("shearVal").textContent = (computedShear !== undefined) ? round(computedShear, 2) : round(basicShear_knots, 2);
-      document.getElementById("angleVal").textContent = (computedAngle !== undefined) ? round(computedAngle, 2) : "N/A";
-      document.getElementById("updraft_mps").textContent = round(finalUpdraft, 2) + " m/s (" + round(finalUpdraft*mpsToKnots, 2) + " knots)";
-      document.getElementById("totalShear").textContent = round(totalShear_knots, 2);
-      document.getElementById("heightVal").textContent = round(finalStormHeight, 2) + (geoHeightComputed ? " m (geo-trig)" : " m");
-      if (rotationalShear_knots !== 0) {
-        document.getElementById("rotationShear").textContent = round(rotationalShear_knots, 2) + " knots (rotational)";
-      } else {
-        document.getElementById("rotationShear").textContent = "Not computed (insufficient geo data)";
+      // 5) Final Updraft
+      let finalUpdraft = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
+
+      // 6) Basic Shear from w & angle
+      let angleRadFinal = degToRad(computedAngle);
+      let basicShearMs = finalUpdraft * Math.tan(angleRadFinal);
+      let basicShearKnots = basicShearMs * mpsToKnots; // in knots
+
+      // if user provided shear, we rely on that, else use basicShearKnots
+      let finalShearKnots = (providedShear !== undefined) ? providedShear : basicShearKnots;
+
+      // 7) Rotational Shear (if we have lat & distance)
+      let rotShearKnots = 0;
+      if (distance !== undefined && obsLatStr && !obsLatUnknown) {
+        let latVal = parseFloat(obsLatStr);
+        let fVal = 2*Omega*Math.sin(degToRad(latVal));
+        let rotMs = fVal*distance; // simplistic approach
+        rotShearKnots = rotMs*mpsToKnots;
       }
+      let totalShearKnots = finalShearKnots + rotShearKnots;
 
-      // Explanation
-      let explanationText =
-        "<strong>Equations & Process:</strong><br>" +
-        "<ul>" +
-        "<li><span class='formula'>w = √(2×CAPE) × D × (1 + γ×(strikes/100))</span>, where <em>D</em> is the drag factor and γ=" + lightningGamma + ".</li>" +
-        "<li><span class='formula'>D = 1 - (C<sub>d</sub> × ρ × H / dragScalingConstant)</span>.</li>" +
-        "<li>We solve for the missing one among <em>CAPE</em>, <em>Shear</em>, or <em>Angle</em> via <span class='formula'>U = w × tan(θ)</span>.</li>" +
-        "<li>Total shear adds a rotational term <span class='formula'>2Ω sin(lat) × distance</span> if geolocation data are provided.</li>" +
-        "<li>Geostrophic wind from pressure gradient: <span class='formula'>u<sub>g</sub> = -1/f ∂p/∂y</span>, <span class='formula'>v<sub>g</sub> = 1/f ∂p/∂x</span>.</li>" +
-        "<li>Horizontal divergence: <span class='formula'>∇ · V = ∂u/∂x + ∂v/∂y</span>.</li>" +
-        "<li>Vertical velocity (omega): <span class='formula'>ω = -(∇ · V) × Δp</span>.</li>" +
-        "</ul>" +
-        "Field data might come from radiosondes (for CAPE, shear), radar/lidar wind profiles (for observed shear & tilt), and model/analysis grids (for pressure fields).";
-      document.getElementById("explanation").innerHTML = explanationText;
+      // 8) Display results
+      document.getElementById("resCAPE").textContent        = round(computedCAPE,2) + " J/kg";
+      document.getElementById("resShear").textContent       = round(finalShearKnots,2);
+      document.getElementById("resAngle").textContent       = round(computedAngle,2) + "°";
+      document.getElementById("resUpdraft").textContent     = round(finalUpdraft,2) + " m/s (" + round(finalUpdraft*mpsToKnots,2) + " kt)";
+      document.getElementById("resHeight").textContent      = round(finalStormHeight,2) + (geoHeightUsed ? " (geo)" : " (default)");
+      document.getElementById("resTotalShear").textContent  = round(totalShearKnots,2);
+      document.getElementById("resRotShear").textContent    = round(rotShearKnots,2);
 
-      document.getElementById("result").style.display = "block";
+      document.getElementById("resultPanel").style.display  = "block";
+      document.getElementById("infoBlock").style.display    = "block";
+    });
+
+    // Generate PDF button
+    document.getElementById("pdfButton").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Gather text from results
+      let capeVal   = document.getElementById("resCAPE").textContent;
+      let shearVal  = document.getElementById("resShear").textContent;
+      let angleVal  = document.getElementById("resAngle").textContent;
+      let updraftVal= document.getElementById("resUpdraft").textContent;
+      let heightVal = document.getElementById("resHeight").textContent;
+      let totalShr  = document.getElementById("resTotalShear").textContent;
+      let rotShr    = document.getElementById("resRotShear").textContent;
+
+      doc.setFontSize(14);
+      doc.text("Storm Survey Results", 10, 10);
+
+      doc.setFontSize(12);
+      doc.text(`CAPE: ${capeVal}`, 10, 20);
+      doc.text(`Shear (knots): ${shearVal}`, 10, 30);
+      doc.text(`Angle (°): ${angleVal}`, 10, 40);
+      doc.text(`Updraft (m/s): ${updraftVal}`, 10, 50);
+      doc.text(`Storm Height: ${heightVal}`, 10, 60);
+      doc.text(`Total Shear (knots): ${totalShr}`, 10, 70);
+      doc.text(`Rotational Shear (knots): ${rotShr}`, 10, 80);
+
+      // Add a short summary of the master equation
+      doc.setFontSize(11);
+      let eqLines = [
+        "Unified Equations:",
+        "1) R = Haversine(...)",
+        "2) H = R * tan(elevAngle) or 4000 + 2*sqrt(CAPE)",
+        "3) w = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))",
+        "4) Shear = w * tan(theta)",
+        "5) RotShear = 2 * Omega * sin(lat) * R",
+        "6) Total Shear = Basic Shear + RotShear"
+      ];
+      let yPos = 95;
+      eqLines.forEach(line => {
+        doc.text(line, 10, yPos);
+        yPos += 7;
+      });
+
+      // Save PDF
+      doc.save("StormSurveyResults.pdf");
     });
   </script>
 </body>
