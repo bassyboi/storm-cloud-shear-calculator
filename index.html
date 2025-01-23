@@ -30,6 +30,7 @@
     input[type="number"] {
       display: block;
       width: 100%;
+      max-width: 300px;
       padding: 0.5rem;
       font-size: 1rem;
       margin-top: 0.3rem;
@@ -93,6 +94,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Storm Survey Calculator</h1>
@@ -101,7 +103,7 @@
     <p class="subtle">
       Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator finds the missing one.
       Provide lat/lon and an elevation angle if you'd like a geometric storm height. Include lightning strikes
-      (per minute) to factor into updraft. 
+      (per minute), CIN, and other advanced factors to produce a more realistic updraft. 
     </p>
 
     <!-- Primary Inputs -->
@@ -142,6 +144,30 @@
       <label class="unknown-option"><input type="checkbox" id="elevAngleUnknown"> Unknown</label>
     </div>
 
+    <div class="info-block">
+      <h3>Advanced Updraft Factors (Optional)</h3>
+      <label for="cin">CIN (J/kg):</label>
+      <input type="number" id="cin" placeholder="e.g. 50" step="any" />
+      <p class="subtle">If CIN ≥ CAPE, no updraft forms.</p>
+
+      <label for="entrain">Entrainment Factor (0.0-1.0):</label>
+      <input type="number" id="entrain" placeholder="e.g. 0.7" step="0.01" />
+      <p class="subtle">Lower => more mixing, less updraft. Typically 0.6–0.8 for strong storms.</p>
+
+      <label for="waterLoad">Water Loading Fraction (0.0-0.4):</label>
+      <input type="number" id="waterLoad" placeholder="e.g. 0.2" step="0.01" />
+      <p class="subtle">Represents raindrops, hail, etc. in updraft. e.g. 0.2 => 20% reduction.</p>
+
+      <label>Drag Parameters</label>
+      <p class="subtle" style="margin-top:0;">
+        <em>Default: Coeff = 0.8, Scale = 1e6</em>
+      </p>
+      <label for="dragCoeff" style="font-weight:normal;">Drag Coefficient:</label>
+      <input type="number" id="dragCoeff" placeholder="0.8" step="0.01" />
+      <label for="dragScale" style="font-weight:normal;">Drag Scale Constant:</label>
+      <input type="number" id="dragScale" placeholder="1e6" step="1" />
+    </div>
+
     <div class="two-buttons">
       <button id="calcButton">Calculate</button>
       <button id="pdfButton">Generate PDF</button>
@@ -166,12 +192,26 @@
       <p>
         We combine geometry (lat/lon + elevation angle) to get storm distance 
         <span class="formula">R</span> and height 
-        <span class="formula">H</span>, then compute or invert
-        <span class="formula">w = √(2 · CAPE) · D · (1 + γ·(strikes/100))</span>,
-        relate updraft <span class="formula">w</span> to shear 
-        <span class="formula">U = w·tan(θ)</span>, and if needed
-        <span class="formula">CAPE</span> is solved by inverting w. Finally, add rotational shear:
-        <span class="formula">U<sub>rot</sub> = 2Ω·sin(lat)·R</span>.
+        <span class="formula">H</span>. Then for the updraft:
+      </p>
+      <p class="formula">
+        w<sub>eff</sub> = &radic;(2·(CAPE - CIN)) · f<sub>entr</sub> · (1 - &alpha;<sub>w</sub>) · f<sub>drag</sub> · f<sub>lightning</sub>
+      </p>
+      <p>
+        where:
+      </p>
+      <ul>
+        <li>CIN is negative energy (cap). If CIN ≥ CAPE, no updraft forms.</li>
+        <li>f<sub>entr</sub> is entrainment factor, (0-1).</li>
+        <li>&alpha;<sub>w</sub> is water loading fraction (0-0.4).</li>
+        <li>f<sub>drag</sub> is based on density & storm height.</li>
+        <li>f<sub>lightning</sub> = 1 + &gamma;(strikes/100).</li>
+      </ul>
+      <p>
+        We relate updraft <span class="formula">w</span> to shear 
+        <span class="formula">U = w·tan(θ)</span>, 
+        and if needed solve for CAPE by inverting the formula. Finally, 
+        rotational shear <span class="formula">U<sub>rot</sub> = 2Ω·sin(lat)·R</span> is added to get total shear.
       </p>
     </div>
   </div>
@@ -190,9 +230,7 @@
      * Constants & Helper Functions
      ************************************************************/
     const mpsToKnots = 1.94384;
-    const dragCoefficient = 0.8;
-    const dragScalingConstant = 1e6;
-    const seaLevelAirDensity = 1.225;
+    const seaLevelAirDensity = 1.225; // kg/m^3
     const T0 = 288.15;    // K
     const L = 0.0065;     // K/m
     const g = 9.80665;    // m/s^2
@@ -222,10 +260,11 @@
       return R_earth * c;
     }
 
-    // Calculate air density at given height
+    // Calculate air density at given height (ISA approach)
     function airDensity(height) {
       const T = T0 - L * height;
       if (T <= 0) return 0;
+      // exponent = (g / (R_ * L)) - 1
       const exponent = (g / (R_ * L)) - 1;
       return seaLevelAirDensity * Math.pow((T / T0), exponent);
     }
@@ -235,29 +274,88 @@
       return 4000 + 2*Math.sqrt(cape);
     }
 
-    // Effective updraft from CAPE + lightning + drag
-    function effectiveUpdraft(cape, strikes, stormHeight) {
-      let wIdeal = Math.sqrt(2 * cape);
+    /************************************************************
+     * Advanced Updraft Calculation
+     ************************************************************/
+    /**
+     * Compute final updraft with:
+     *   w_eff = sqrt(2*(CAPE - CIN)) * fEntrain * (1 - alphaWater)
+     *           * dragFactor * lightningFactor
+     */
+    function advancedUpdraft(cape, cinVal, stormHeight, fEntrain, alphaWater, dragCoeff, dragScale, strikes) {
+      // 1) Reduce CAPE by CIN
+      let reduced = Math.max(0, cape - cinVal); 
+      if (reduced <= 0) return 0; // fully capped or negative net
+
+      // 2) Theoretical
+      let wIdeal = Math.sqrt(2 * reduced);
+
+      // 3) Entrainment
+      let wEntrain = wIdeal * fEntrain;
+
+      // 4) Water Loading
+      let wWater = wEntrain * (1 - alphaWater);
+
+      // 5) Drag
       let rho = airDensity(stormHeight);
-      let dragFactor = 1 - (dragCoefficient * rho * stormHeight / dragScalingConstant);
-      dragFactor = Math.max(0, dragFactor);
-      let lightningFactor = 1 + lightningGamma*(strikes / 100);
-      return wIdeal * dragFactor * lightningFactor;
+      let fDrag = 1 - (dragCoeff * rho * stormHeight / dragScale);
+      if (fDrag < 0) fDrag = 0;
+      let wDrag = wWater * fDrag;
+
+      // 6) Lightning
+      let fLightning = 1 + lightningGamma*(strikes/100);
+      let wEff = wDrag * fLightning;
+
+      return wEff;
     }
 
-    // Main calculation triggered by "Calculate"
+    /**
+     * Invert the advanced updraft formula to solve for CAPE
+     * given a desired final w, CIN, etc.
+     *
+     * w_eff = sqrt(2*(CAPE - CIN))* fEntrain * (1 - alphaWater) * fDrag * fLightning
+     * => CAPE = CIN + ((w_eff / topFactor)^2 / 2)
+     *
+     * where topFactor = fEntrain*(1 - alphaWater)*fDrag*fLightning
+     */
+    function invertCAPE(wEff, cinVal, stormHeight, fEntrain, alphaWater, dragCoeff, dragScale, strikes) {
+      // Compute fDrag, fLightning
+      let rho = airDensity(stormHeight);
+      let fDrag = 1 - (dragCoeff * rho * stormHeight / dragScale);
+      if (fDrag < 0) fDrag = 0;
+
+      let fLightning = 1 + lightningGamma*(strikes/100);
+
+      let topFactor = fEntrain*(1 - alphaWater)*fDrag*fLightning;
+      if (topFactor <= 0) {
+        // means no updraft possible
+        return 0;
+      }
+      // rearrange
+      // CAPE = CIN + ( (wEff^2)/(2 * (topFactor^2)) )
+      let wOverTop = wEff / topFactor;
+      let halfSquared = (wOverTop * wOverTop) / 2;
+
+      let cape = cinVal + halfSquared;
+      if (cape < 0) cape = 0;
+      return cape;
+    }
+
+    /************************************************************
+     *  Main Calculation
+     ************************************************************/
     document.getElementById("calcButton").addEventListener("click", () => {
-      // 1) Gather user inputs
-      let capeStr = document.getElementById("cape").value.trim();
-      let shearStr = document.getElementById("shear").value.trim();
-      let angleStr = document.getElementById("angle").value.trim();
-      let strikesStr = document.getElementById("strikes").value.trim();
+      // 1) Gather user inputs for CAPE, Shear, Angle
+      let capeStr   = document.getElementById("cape").value.trim();
+      let shearStr  = document.getElementById("shear").value.trim();
+      let angleStr  = document.getElementById("angle").value.trim();
+      let strikesStr= document.getElementById("strikes").value.trim();
 
-      let capeUnknown = document.getElementById("capeUnknown").checked;
-      let shearUnknown = document.getElementById("shearUnknown").checked;
-      let angleUnknown = document.getElementById("angleUnknown").checked;
+      let capeUnknown   = document.getElementById("capeUnknown").checked;
+      let shearUnknown  = document.getElementById("shearUnknown").checked;
+      let angleUnknown  = document.getElementById("angleUnknown").checked;
 
-      let providedCAPE = (!capeUnknown && capeStr !== "") ? parseFloat(capeStr) : undefined;
+      let providedCAPE  = (!capeUnknown && capeStr !== "") ? parseFloat(capeStr) : undefined;
       let providedShear = (!shearUnknown && shearStr !== "") ? parseFloat(shearStr) : undefined;
       let providedAngle = (!angleUnknown && angleStr !== "") ? parseFloat(angleStr) : undefined;
 
@@ -271,7 +369,18 @@
       let strikes = (strikesStr !== "") ? parseFloat(strikesStr) : 0;
       if (strikes < 0) strikes = 0;
 
-      // 2) Geographic
+      // 2) Advanced factors
+      let cinVal       = parseFloat(document.getElementById("cin").value) || 0;
+      let fEntrain     = parseFloat(document.getElementById("entrain").value);
+      if (isNaN(fEntrain)) fEntrain = 0.7; // default
+      let alphaWater   = parseFloat(document.getElementById("waterLoad").value);
+      if (isNaN(alphaWater)) alphaWater = 0.2; // default
+      let dragCoeff    = parseFloat(document.getElementById("dragCoeff").value);
+      if (isNaN(dragCoeff)) dragCoeff = 0.8; // default
+      let dragScale    = parseFloat(document.getElementById("dragScale").value);
+      if (isNaN(dragScale)) dragScale = 1e6; // default
+
+      // 3) Geographic
       let obsLatStr = document.getElementById("observerLat").value.trim();
       let obsLatUnknown = document.getElementById("obsLatUnknown").checked;
       let obsLonStr = document.getElementById("observerLon").value.trim();
@@ -284,17 +393,17 @@
       let elevAngleStr = document.getElementById("elevAngle").value.trim();
       let elevAngleUnknown = document.getElementById("elevAngleUnknown").checked;
 
+      // Compute distance if possible
       let distance = undefined;
-      // If we have observer lat/lon & storm lat/lon, compute distance
       if (!obsLatUnknown && !stormLatUnknown && obsLatStr && stormLatStr) {
         let obsLat = parseFloat(obsLatStr);
-        let obsLon = (obsLonStr) ? parseFloat(obsLonStr) : 0;
-        let sLat = parseFloat(stormLatStr);
-        let sLon = (stormLonStr) ? parseFloat(stormLonStr) : 0;
-        distance = haversine(obsLat, obsLon, sLat, sLon);
+        let obsLon = obsLonStr ? parseFloat(obsLonStr) : 0;
+        let sLat   = parseFloat(stormLatStr);
+        let sLon   = stormLonStr ? parseFloat(stormLonStr) : 0;
+        distance   = haversine(obsLat, obsLon, sLat, sLon);
       }
 
-      // 3) Storm Height
+      // 4) Storm Height
       let finalStormHeight = 4000; // fallback
       let geoHeightUsed = false;
       if (!elevAngleUnknown && elevAngleStr && distance !== undefined) {
@@ -302,90 +411,114 @@
         finalStormHeight = distance * Math.tan(degToRad(elevAngle));
         geoHeightUsed = true;
       } else if (providedCAPE !== undefined) {
+        // default formula
         finalStormHeight = defaultStormHeight(providedCAPE);
       }
 
-      // 4) Solve for the missing param
-      let computedCAPE = providedCAPE;
-      let computedAngle = providedAngle;
-      let computedShearKnots = providedShear; // user gave it in knots
+      // 5) Solve for Missing Param (CAPE, Shear, or Angle)
+      let computedCAPE       = providedCAPE;
+      let computedAngle      = providedAngle;
+      let computedShearKnots = providedShear;
 
-      // (a) Missing Angle
+      // a) Missing Angle
       if (computedAngle === undefined) {
-        if (!computedCAPE) {
+        if (computedCAPE === undefined) {
           alert("Cannot compute angle without a CAPE value.");
           return;
         }
-        let wEff = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
-        let shearMs = computedShearKnots / mpsToKnots;
+        // We'll compute updraft from advanced approach
+        let wEff = advancedUpdraft(
+          computedCAPE, cinVal, finalStormHeight,
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+        );
+        let shearMs = computedShearKnots / mpsToKnots; // user gave shear in knots
+        if (wEff <= 0) {
+          alert("No updraft formed (CIN >= CAPE or extreme factors). Angle can't be found.");
+          return;
+        }
         computedAngle = radToDeg(Math.atan(shearMs / wEff));
       }
-      // (b) Missing Shear
+      // b) Missing Shear
       else if (computedShearKnots === undefined) {
-        if (!computedCAPE) {
+        if (computedCAPE === undefined) {
           alert("Cannot compute shear without a CAPE value.");
           return;
         }
-        let wEff = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
+        let wEff = advancedUpdraft(
+          computedCAPE, cinVal, finalStormHeight,
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+        );
         let angleRad = degToRad(computedAngle);
-        let shearMs = wEff * Math.tan(angleRad);
+        let shearMs  = wEff * Math.tan(angleRad);
         computedShearKnots = shearMs * mpsToKnots;
       }
-      // (c) Missing CAPE
+      // c) Missing CAPE
       else if (computedCAPE === undefined) {
+        // We'll invert the advanced updraft formula
         let angleRad = degToRad(computedAngle);
-        let shearMs = computedShearKnots / mpsToKnots;
+        let shearMs  = computedShearKnots / mpsToKnots;
+        // wWanted = shearMs / tan(angle)
+        let wWanted = 0;
+        if (Math.tan(angleRad) !== 0) {
+          wWanted = shearMs / Math.tan(angleRad);
+        } else {
+          alert("Invalid angle for shear inversion (tan=0).");
+          return;
+        }
 
-        // w_basic = shearMs / tan(angle)
-        // w_basic = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))
-        // => CAPE = ...
-        let Hguess = geoHeightUsed ? finalStormHeight : 4000;
+        // Invert to get CAPE
+        let capeFound = invertCAPE(
+          wWanted, cinVal, finalStormHeight,
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+        );
+        computedCAPE = capeFound;
 
-        let rho = airDensity(Hguess);
-        let dragFactor = Math.max(0, 1 - (dragCoefficient*rho*Hguess/dragScalingConstant));
-        let lightningFactor = 1 + lightningGamma*(strikes/100);
-
-        let wBasic = shearMs / Math.tan(angleRad);
-        let sqrtTerm = wBasic / (dragFactor*lightningFactor);
-        computedCAPE = (Math.pow(sqrtTerm, 2))/2;
-
+        // If we used default storm height logic
         if (!geoHeightUsed) {
+          // update finalStormHeight based on the new CAPE
           finalStormHeight = defaultStormHeight(computedCAPE);
         }
       }
 
-      // 5) Final Updraft
-      let finalUpdraft = effectiveUpdraft(computedCAPE, strikes, finalStormHeight);
+      // 6) Compute final updraft from advanced approach
+      let finalUpdraft = advancedUpdraft(
+        computedCAPE, cinVal, finalStormHeight,
+        fEntrain, alphaWater, dragCoeff, dragScale, strikes
+      );
 
-      // 6) Basic Shear from w & angle
+      // 7) Basic Shear from updraft & angle
       let angleRadFinal = degToRad(computedAngle);
-      let basicShearMs = finalUpdraft * Math.tan(angleRadFinal);
-      let basicShearKnots = basicShearMs * mpsToKnots; // in knots
-
-      // if user provided shear, we rely on that, else use basicShearKnots
+      let basicShearMs  = finalUpdraft * Math.tan(angleRadFinal);
+      let basicShearKnots = basicShearMs * mpsToKnots;
       let finalShearKnots = (providedShear !== undefined) ? providedShear : basicShearKnots;
 
-      // 7) Rotational Shear (if we have lat & distance)
+      // 8) Rotational Shear
       let rotShearKnots = 0;
       if (distance !== undefined && obsLatStr && !obsLatUnknown) {
         let latVal = parseFloat(obsLatStr);
-        let fVal = 2*Omega*Math.sin(degToRad(latVal));
-        let rotMs = fVal*distance; // simplistic approach
-        rotShearKnots = rotMs*mpsToKnots;
+        let fVal   = 2 * Omega * Math.sin(degToRad(latVal));
+        let rotMs  = fVal * distance;
+        rotShearKnots = rotMs * mpsToKnots;
       }
       let totalShearKnots = finalShearKnots + rotShearKnots;
 
-      // 8) Display results
-      document.getElementById("resCAPE").textContent        = round(computedCAPE,2) + " J/kg";
-      document.getElementById("resShear").textContent       = round(finalShearKnots,2);
-      document.getElementById("resAngle").textContent       = round(computedAngle,2) + "°";
-      document.getElementById("resUpdraft").textContent     = round(finalUpdraft,2) + " m/s (" + round(finalUpdraft*mpsToKnots,2) + " kt)";
-      document.getElementById("resHeight").textContent      = round(finalStormHeight,2) + (geoHeightUsed ? " (geo)" : " (default)");
-      document.getElementById("resTotalShear").textContent  = round(totalShearKnots,2);
-      document.getElementById("resRotShear").textContent    = round(rotShearKnots,2);
+      // 9) Display results
+      document.getElementById("resCAPE").textContent   = round(computedCAPE,2) + " J/kg";
+      document.getElementById("resShear").textContent  = round(finalShearKnots,2);
+      document.getElementById("resAngle").textContent  = round(computedAngle,2) + "°";
 
-      document.getElementById("resultPanel").style.display  = "block";
-      document.getElementById("infoBlock").style.display    = "block";
+      let updraftTxt = round(finalUpdraft,2) + " m/s (" 
+                     + round(finalUpdraft*mpsToKnots,2) + " kt)";
+      document.getElementById("resUpdraft").textContent = updraftTxt;
+
+      let heightTxt = round(finalStormHeight,2) + (geoHeightUsed ? " (geo)" : " (default)");
+      document.getElementById("resHeight").textContent  = heightTxt;
+
+      document.getElementById("resTotalShear").textContent = round(totalShearKnots,2);
+      document.getElementById("resRotShear").textContent   = round(rotShearKnots,2);
+
+      document.getElementById("resultPanel").style.display = "block";
+      document.getElementById("infoBlock").style.display   = "block";
     });
 
     //  Generate PDF button
@@ -403,7 +536,7 @@
       const obsLatStr = document.getElementById("observerLat").value.trim() || "UnknownLat";
       const obsLonStr = document.getElementById("observerLon").value.trim() || "UnknownLon";
 
-      // Construct the final filename, e.g. Storm_2025-01-23_1530Z_Lat35.2_Lon-80.0.pdf
+      // Construct the final filename
       const fileName = `Storm_${dateStr}_Lat${obsLatStr}_Lon${obsLonStr}.pdf`;
 
       // 2) Gather text from results
@@ -432,24 +565,21 @@
       doc.text(`Total Shear (knots): ${totalShr}`, 10, 70);
       doc.text(`Rotational Shear (knots): ${rotShr}`, 10, 80);
 
-      // Add short summary of the main equations
+      // Add short summary of the advanced equations
       doc.setFontSize(11);
       let eqLines = [
-        "Unified Equations:",
-        "1) Distance = Haversine(obsLat, obsLon, stormLat, stormLon)",
-        "2) Height = Distance * tan(elevAngle) or default(4000 + 2*sqrt(CAPE))",
-        "3) w = sqrt(2*CAPE)*DragFactor*(1 + 0.5*(strikes/100))",
-        "4) Shear = w * tan(angle)",
-        "5) RotShear = 2*Omega*sin(lat)*Distance",
-        "6) Total Shear = Basic Shear + RotShear"
+        "Advanced Updraft Formula:",
+        "  w_eff = sqrt(2*(CAPE - CIN))*fEntrain*(1-alphaWater)*fDrag*(1+gamma*(strikes/100))",
+        "Missing CAPE is solved by inverting the same formula if needed.",
+        "Shear = w_eff * tan(angle). RotShear = 2*Omega*sin(lat)*Distance"
       ];
       let yPos = 95;
       eqLines.forEach(line => {
         doc.text(line, 10, yPos);
-        yPos += 7;
+        yPos += 6;
       });
 
-      // 5) Download the PDF with the custom date-based filename
+      // 5) Download the PDF
       doc.save(fileName);
     });
   </script>
