@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>All-in-One Storm Survey Calculator (with PDF)</title>
+  <meta charset="UTF-8" />
+  <title>All-in-One Storm Survey Calculator (with PDF & Date-Named)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -176,11 +176,15 @@
     </div>
   </div>
 
-  <!-- Include jsPDF from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-          integrity="sha512-KO2+IBZ6Hb8OaY0nS8jNktEtmLLn3nsujh1I82D0phWC3UqCPmSL6+8CsH6XSNJIg7BmPoZepw7V6WJCIi3QEw=="
-          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- 1) Load jsPDF from CDN (no local file needed). -->
+  <script 
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+    integrity="sha512-KO2+IBZ6Hb8OaY0nS8jNktEtmLLn3nsujh1I82D0phWC3UqCPmSL6+8CsH6XSNJIg7BmPoZepw7V6WJCIi3QEw=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer">
+  </script>
 
+  <!-- 2) Our main JS code for calculations & PDF generation. -->
   <script>
     /************************************************************
      * Constants & Helper Functions
@@ -308,8 +312,6 @@
 
       // (a) Missing Angle
       if (computedAngle === undefined) {
-        // we have CAPE & Shear
-        // find w, then angle = arctan(Shear_m/s / w)
         if (!computedCAPE) {
           alert("Cannot compute angle without a CAPE value.");
           return;
@@ -320,7 +322,6 @@
       }
       // (b) Missing Shear
       else if (computedShearKnots === undefined) {
-        // we have CAPE & angle -> find w, then shear = w * tan(angle)
         if (!computedCAPE) {
           alert("Cannot compute shear without a CAPE value.");
           return;
@@ -332,17 +333,13 @@
       }
       // (c) Missing CAPE
       else if (computedCAPE === undefined) {
-        // we have Shear (knots) & angle -> invert updraft to find CAPE
         let angleRad = degToRad(computedAngle);
         let shearMs = computedShearKnots / mpsToKnots;
+
         // w_basic = shearMs / tan(angle)
         // w_basic = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))
         // => CAPE = ...
-        // But we need an estimate of D. For that, we need a height guess (or iterative approach).
-        // We'll pick a default height ~4000m if no geometry. Let's do that:
-        let Hguess = 4000;
-        // or if geometry is known, use that:
-        if (geoHeightUsed) Hguess = finalStormHeight;
+        let Hguess = geoHeightUsed ? finalStormHeight : 4000;
 
         let rho = airDensity(Hguess);
         let dragFactor = Math.max(0, 1 - (dragCoefficient*rho*Hguess/dragScalingConstant));
@@ -350,9 +347,8 @@
 
         let wBasic = shearMs / Math.tan(angleRad);
         let sqrtTerm = wBasic / (dragFactor*lightningFactor);
-        // cap ~ (sqrtTerm^2)/2
         computedCAPE = (Math.pow(sqrtTerm, 2))/2;
-        // now let's refine finalStormHeight using that new CAPE:
+
         if (!geoHeightUsed) {
           finalStormHeight = defaultStormHeight(computedCAPE);
         }
@@ -392,20 +388,38 @@
       document.getElementById("infoBlock").style.display    = "block";
     });
 
-    // Generate PDF button
+    //  Generate PDF button
     document.getElementById("pdfButton").addEventListener("click", () => {
+      // 1) Build a date-based name for the PDF
+      const now = new Date();
+      const year  = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day   = String(now.getUTCDate()).padStart(2, '0');
+      const hours = String(now.getUTCHours()).padStart(2, '0');
+      const mins  = String(now.getUTCMinutes()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}_${hours}${mins}Z`;
+
+      // Optionally, incorporate observer lat/lon if available
+      const obsLatStr = document.getElementById("observerLat").value.trim() || "UnknownLat";
+      const obsLonStr = document.getElementById("observerLon").value.trim() || "UnknownLon";
+
+      // Construct the final filename, e.g. Storm_2025-01-23_1530Z_Lat35.2_Lon-80.0.pdf
+      const fileName = `Storm_${dateStr}_Lat${obsLatStr}_Lon${obsLonStr}.pdf`;
+
+      // 2) Gather text from results
+      let capeVal   = document.getElementById("resCAPE").textContent || "(no data)";
+      let shearVal  = document.getElementById("resShear").textContent || "(no data)";
+      let angleVal  = document.getElementById("resAngle").textContent || "(no data)";
+      let updraftVal= document.getElementById("resUpdraft").textContent || "(no data)";
+      let heightVal = document.getElementById("resHeight").textContent || "(no data)";
+      let totalShr  = document.getElementById("resTotalShear").textContent || "(no data)";
+      let rotShr    = document.getElementById("resRotShear").textContent || "(no data)";
+
+      // 3) Create the jsPDF object
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // Gather text from results
-      let capeVal   = document.getElementById("resCAPE").textContent;
-      let shearVal  = document.getElementById("resShear").textContent;
-      let angleVal  = document.getElementById("resAngle").textContent;
-      let updraftVal= document.getElementById("resUpdraft").textContent;
-      let heightVal = document.getElementById("resHeight").textContent;
-      let totalShr  = document.getElementById("resTotalShear").textContent;
-      let rotShr    = document.getElementById("resRotShear").textContent;
-
+      // 4) Write some text
       doc.setFontSize(14);
       doc.text("Storm Survey Results", 10, 10);
 
@@ -413,20 +427,20 @@
       doc.text(`CAPE: ${capeVal}`, 10, 20);
       doc.text(`Shear (knots): ${shearVal}`, 10, 30);
       doc.text(`Angle (°): ${angleVal}`, 10, 40);
-      doc.text(`Updraft (m/s): ${updraftVal}`, 10, 50);
+      doc.text(`Updraft: ${updraftVal}`, 10, 50);
       doc.text(`Storm Height: ${heightVal}`, 10, 60);
       doc.text(`Total Shear (knots): ${totalShr}`, 10, 70);
       doc.text(`Rotational Shear (knots): ${rotShr}`, 10, 80);
 
-      // Add a short summary of the master equation
+      // Add short summary of the main equations
       doc.setFontSize(11);
       let eqLines = [
         "Unified Equations:",
-        "1) R = Haversine(...)",
-        "2) H = R * tan(elevAngle) or 4000 + 2*sqrt(CAPE)",
-        "3) w = sqrt(2*CAPE)*D*(1 + gamma*(strikes/100))",
-        "4) Shear = w * tan(theta)",
-        "5) RotShear = 2 * Omega * sin(lat) * R",
+        "1) Distance = Haversine(obsLat, obsLon, stormLat, stormLon)",
+        "2) Height = Distance * tan(elevAngle) or default(4000 + 2*sqrt(CAPE))",
+        "3) w = sqrt(2*CAPE)*DragFactor*(1 + 0.5*(strikes/100))",
+        "4) Shear = w * tan(angle)",
+        "5) RotShear = 2*Omega*sin(lat)*Distance",
         "6) Total Shear = Basic Shear + RotShear"
       ];
       let yPos = 95;
@@ -435,8 +449,8 @@
         yPos += 7;
       });
 
-      // Save PDF
-      doc.save("StormSurveyResults.pdf");
+      // 5) Download the PDF with the custom date-based filename
+      doc.save(fileName);
     });
   </script>
 </body>
