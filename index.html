@@ -23,6 +23,10 @@
       color: #333;
       margin-bottom: 1rem;
     }
+    h3 {
+      color: #007acc;
+      margin-top: 2rem;
+    }
     label {
       display: block;
       margin-top: 1.2rem;
@@ -86,36 +90,83 @@
     .two-buttons button {
       flex: 1;
     }
+    /* Sidebar styling */
+    #sidebar {
+      background: #eef;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    #sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    #sidebar li {
+      margin: 0.5rem 0;
+    }
+    #sidebar a {
+      text-decoration: none;
+      color: #007acc;
+      font-weight: bold;
+    }
+    .sidebar-note {
+      font-size: 0.9rem;
+      color: #555;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
+    <!-- Sidebar Navigation -->
+    <div id="sidebar">
+      <ul>
+        <li><a href="#primary-inputs">Primary Inputs</a></li>
+        <li><a href="#geographic-inputs">Geographic Inputs</a></li>
+        <li><a href="#advanced-factors">Advanced Updraft Factors</a></li>
+        <li><a href="#surface-conditions">Surface Conditions &amp; Storm Staging</a></li>
+        <li><a href="#documentation">Documentation</a></li>
+      </ul>
+      <p class="sidebar-note">
+        These options are designed to be easy to find—just like in the Windy app.
+        Click on any link to jump directly to that section.
+      </p>
+    </div>
+    
+    <!-- Main Title -->
     <h1>Enhanced Storm Survey Calculator</h1>
-    <h2>Including Vertical Staging & Surface Dewpoint Effects</h2>
+    <h2>Including Vertical Staging &amp; Surface Dewpoint Effects</h2>
     <p class="subtle">
       Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator will solve for the missing parameter.
     </p>
-
-    <!-- Primary Inputs: CAPE, Shear, Angle, Lightning -->
-    <label for="cape">CAPE (J/kg):</label>
-    <input type="number" id="cape" placeholder="e.g. 2000" step="any" />
-    <label class="unknown-option"><input type="checkbox" id="capeUnknown"> Unknown</label>
     
-    <label for="shear">Bulk Wind Shear (knots):</label>
-    <input type="number" id="shear" placeholder="e.g. 30" step="any" />
-    <label class="unknown-option"><input type="checkbox" id="shearUnknown"> Unknown</label>
+    <!-- Primary Inputs Section -->
+    <div id="primary-inputs">
+      <h3>Primary Inputs</h3>
+      <p class="subtle">(Typically found on the main screen of weather apps)</p>
+      
+      <label for="cape">CAPE (J/kg):</label>
+      <input type="number" id="cape" placeholder="e.g. 2000" step="any" />
+      <label class="unknown-option"><input type="checkbox" id="capeUnknown"> Unknown</label>
+      
+      <label for="shear">Bulk Wind Shear (knots):</label>
+      <input type="number" id="shear" placeholder="e.g. 30" step="any" />
+      <label class="unknown-option"><input type="checkbox" id="shearUnknown"> Unknown</label>
+      
+      <label for="angle">Storm Tilt Angle (°):</label>
+      <input type="number" id="angle" placeholder="e.g. 25" step="any" />
+      <label class="unknown-option"><input type="checkbox" id="angleUnknown"> Unknown</label>
+      
+      <label for="strikes">Lightning Strikes per Minute:</label>
+      <input type="number" id="strikes" placeholder="e.g. 50" step="1" />
+    </div>
     
-    <label for="angle">Storm Tilt Angle (°):</label>
-    <input type="number" id="angle" placeholder="e.g. 25" step="any" />
-    <label class="unknown-option"><input type="checkbox" id="angleUnknown"> Unknown</label>
-    
-    <label for="strikes">Lightning Strikes per Minute:</label>
-    <input type="number" id="strikes" placeholder="e.g. 50" step="1" />
-    
-    <!-- Geographic Inputs -->
-    <div class="info-block">
+    <!-- Geographic Inputs Section -->
+    <div class="info-block" id="geographic-inputs">
       <h3>Geographic Inputs (Optional)</h3>
+      <p class="subtle">(Accessible via location settings or the map view, similar to Windy)</p>
+      
       <label for="observerLat">Observer Latitude (°):</label>
       <input type="number" id="observerLat" placeholder="e.g. 38.5" step="any" />
       <label class="unknown-option"><input type="checkbox" id="obsLatUnknown"> Unknown</label>
@@ -136,9 +187,11 @@
       <label class="unknown-option"><input type="checkbox" id="elevAngleUnknown"> Unknown</label>
     </div>
     
-    <!-- Advanced Updraft Factors -->
-    <div class="info-block">
+    <!-- Advanced Updraft Factors Section -->
+    <div class="info-block" id="advanced-factors">
       <h3>Advanced Updraft Factors (Optional)</h3>
+      <p class="subtle">(Access these in the detailed settings menu)</p>
+      
       <label for="cin">CIN (J/kg):</label>
       <input type="number" id="cin" placeholder="e.g. 50" step="any" />
       <p class="subtle">If CIN ≥ CAPE, no updraft forms.</p>
@@ -159,14 +212,16 @@
       <input type="number" id="dragScale" placeholder="1e6" step="1" />
       
       <!-- ΔT Input for Lapse Rate Factor -->
-      <label for="deltaT">Delta T (°C between surface & mid-level):</label>
+      <label for="deltaT">Delta T (°C between surface &amp; mid-level):</label>
       <input type="number" id="deltaT" placeholder="e.g. 20" step="any" />
       <p class="subtle">Used to compute an environmental lapse rate factor (f_lapse).</p>
     </div>
     
-    <!-- New Surface Conditions & Storm Staging Inputs -->
-    <div class="info-block">
-      <h3>Surface Conditions & Storm Staging (Extra)</h3>
+    <!-- Surface Conditions & Storm Staging Section -->
+    <div class="info-block" id="surface-conditions">
+      <h3>Surface Conditions &amp; Storm Staging (Extra)</h3>
+      <p class="subtle">(Typically available under weather conditions or storm analysis)</p>
+      
       <label for="surfTemp">Surface Temperature (°C):</label>
       <input type="number" id="surfTemp" placeholder="e.g. 25" step="any" />
       <label for="surfDew">Surface Dewpoint (°C):</label>
@@ -205,7 +260,7 @@
     </div>
     
     <!-- Documentation Section: How It Works -->
-    <div class="documentation">
+    <div class="documentation" id="documentation">
       <h4>How This Calculator Works</h4>
       <p>
         This tool estimates storm parameters by calculating an <em>effective updraft speed</em> from available energy (CAPE) and inhibitory energy (CIN). It uses a series of multipliers to account for key processes:
