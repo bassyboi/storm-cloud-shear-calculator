@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>All-in-One Storm Survey Calculator (with PDF & Date-Named)</title>
+  <title>Enhanced Storm Survey Calculator with Documentation</title>
   <style>
+    /* Basic styling for readability */
     body {
       font-family: Arial, sans-serif;
       margin: 2rem;
@@ -27,7 +28,7 @@
       margin-top: 1.2rem;
       font-weight: 600;
     }
-    input[type="number"] {
+    input[type="number"], select {
       display: block;
       width: 100%;
       max-width: 300px;
@@ -55,12 +56,16 @@
     button:hover {
       background: #005fa3;
     }
-    .result {
+    .result, .documentation {
       margin-top: 1.5rem;
       padding: 1rem;
       background: #e9f5ff;
       border: 1px solid #b3d7ff;
       border-radius: 8px;
+    }
+    .documentation {
+      background: #fff8dc;
+      border: 1px solid #f4e1a1;
     }
     .formula {
       background: #eef;
@@ -70,20 +75,9 @@
       display: inline-block;
       margin: 0.2rem 0;
     }
-    .info-block {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: #fff8dc;
-      border: 1px solid #f4e1a1;
-      border-radius: 8px;
-    }
     .subtle {
       color: #555;
       font-size: 0.9rem;
-    }
-    .inline-value {
-      font-weight: 600;
-      color: #006;
     }
     .two-buttons {
       display: flex;
@@ -97,82 +91,105 @@
 
 <body>
   <div class="container">
-    <h1>Storm Survey Calculator</h1>
-    <h2>All-in-One (CAPE, Shear, Angle, Geometry, PDF Output)</h2>
-
+    <h1>Enhanced Storm Survey Calculator</h1>
+    <h2>Including Vertical Staging & Surface Dewpoint Effects</h2>
     <p class="subtle">
-      Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator finds the missing one.
-      Provide lat/lon and an elevation angle if you'd like a geometric storm height. Include lightning strikes
-      (per minute), CIN, and other advanced factors to produce a more realistic updraft. 
+      Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator will solve for the missing parameter.
     </p>
 
-    <!-- Primary Inputs -->
+    <!-- Primary Inputs: CAPE, Shear, Angle, Lightning -->
     <label for="cape">CAPE (J/kg):</label>
     <input type="number" id="cape" placeholder="e.g. 2000" step="any" />
     <label class="unknown-option"><input type="checkbox" id="capeUnknown"> Unknown</label>
-
+    
     <label for="shear">Bulk Wind Shear (knots):</label>
     <input type="number" id="shear" placeholder="e.g. 30" step="any" />
     <label class="unknown-option"><input type="checkbox" id="shearUnknown"> Unknown</label>
-
+    
     <label for="angle">Storm Tilt Angle (°):</label>
     <input type="number" id="angle" placeholder="e.g. 25" step="any" />
     <label class="unknown-option"><input type="checkbox" id="angleUnknown"> Unknown</label>
-
+    
     <label for="strikes">Lightning Strikes per Minute:</label>
     <input type="number" id="strikes" placeholder="e.g. 50" step="1" />
-
+    
+    <!-- Geographic Inputs -->
     <div class="info-block">
       <h3>Geographic Inputs (Optional)</h3>
       <label for="observerLat">Observer Latitude (°):</label>
       <input type="number" id="observerLat" placeholder="e.g. 38.5" step="any" />
       <label class="unknown-option"><input type="checkbox" id="obsLatUnknown"> Unknown</label>
-
+      
       <label for="observerLon">Observer Longitude (°):</label>
       <input type="number" id="observerLon" placeholder="e.g. -77.0" step="any" />
-
+      
       <label for="stormLat">Storm Latitude (°):</label>
       <input type="number" id="stormLat" placeholder="e.g. 40.0" step="any" />
       <label class="unknown-option"><input type="checkbox" id="stormLatUnknown"> Unknown</label>
-
+      
       <label for="stormLon">Storm Longitude (°):</label>
       <input type="number" id="stormLon" placeholder="e.g. -80.0" step="any" />
       <label class="unknown-option"><input type="checkbox" id="stormLonUnknown"> Unknown</label>
-
+      
       <label for="elevAngle">Elevation Angle from Observer (°):</label>
       <input type="number" id="elevAngle" placeholder="e.g. 10" step="any" />
       <label class="unknown-option"><input type="checkbox" id="elevAngleUnknown"> Unknown</label>
     </div>
-
+    
+    <!-- Advanced Updraft Factors -->
     <div class="info-block">
       <h3>Advanced Updraft Factors (Optional)</h3>
       <label for="cin">CIN (J/kg):</label>
       <input type="number" id="cin" placeholder="e.g. 50" step="any" />
       <p class="subtle">If CIN ≥ CAPE, no updraft forms.</p>
-
-      <label for="entrain">Entrainment Factor (0.0-1.0):</label>
+      
+      <label for="entrain">Entrainment Factor (0.0–1.0):</label>
       <input type="number" id="entrain" placeholder="e.g. 0.7" step="0.01" />
-      <p class="subtle">Lower => more mixing, less updraft. Typically 0.6–0.8 for strong storms.</p>
-
-      <label for="waterLoad">Water Loading Fraction (0.0-0.4):</label>
+      <p class="subtle">Lower values indicate stronger mixing. Default is 0.7.</p>
+      
+      <label for="waterLoad">Water Loading Fraction (0.0–0.4):</label>
       <input type="number" id="waterLoad" placeholder="e.g. 0.2" step="0.01" />
-      <p class="subtle">Represents raindrops, hail, etc. in updraft. e.g. 0.2 => 20% reduction.</p>
-
+      <p class="subtle">Represents reduction in updraft speed due to hydrometeors.</p>
+      
       <label>Drag Parameters</label>
-      <p class="subtle" style="margin-top:0;">
-        <em>Default: Coeff = 0.8, Scale = 1e6</em>
-      </p>
+      <p class="subtle">Defaults: Drag Coefficient = 0.8, Drag Scale = 1e6</p>
       <label for="dragCoeff" style="font-weight:normal;">Drag Coefficient:</label>
       <input type="number" id="dragCoeff" placeholder="0.8" step="0.01" />
       <label for="dragScale" style="font-weight:normal;">Drag Scale Constant:</label>
       <input type="number" id="dragScale" placeholder="1e6" step="1" />
+      
+      <!-- ΔT Input for Lapse Rate Factor -->
+      <label for="deltaT">Delta T (°C between surface & mid-level):</label>
+      <input type="number" id="deltaT" placeholder="e.g. 20" step="any" />
+      <p class="subtle">Used to compute an environmental lapse rate factor (f_lapse).</p>
     </div>
-
+    
+    <!-- New Surface Conditions & Storm Staging Inputs -->
+    <div class="info-block">
+      <h3>Surface Conditions & Storm Staging (Extra)</h3>
+      <label for="surfTemp">Surface Temperature (°C):</label>
+      <input type="number" id="surfTemp" placeholder="e.g. 25" step="any" />
+      <label for="surfDew">Surface Dewpoint (°C):</label>
+      <input type="number" id="surfDew" placeholder="e.g. 18" step="any" />
+      <p class="subtle">
+        Higher dewpoints result in lower LCL (cloud base), which enhances latent heating and updraft strength.
+      </p>
+      <label for="stormStage">Storm Stage:</label>
+      <select id="stormStage">
+        <option value="0.9">Developing (multiplier = 0.9)</option>
+        <option value="1.1" selected>Mature (multiplier = 1.1)</option>
+        <option value="0.8">Dissipating (multiplier = 0.8)</option>
+      </select>
+      <p class="subtle">
+        Choose the storm's stage to adjust the updraft speed.
+      </p>
+    </div>
+    
     <div class="two-buttons">
       <button id="calcButton">Calculate</button>
       <button id="pdfButton">Generate PDF</button>
     </div>
-
+    
     <!-- Results Panel -->
     <div id="resultPanel" class="result" style="display:none;">
       <h3>Storm Results</h3>
@@ -180,319 +197,359 @@
         <strong>CAPE:</strong> <span id="resCAPE"></span><br>
         <strong>Shear (knots):</strong> <span id="resShear"></span><br>
         <strong>Angle (°):</strong> <span id="resAngle"></span><br>
-        <strong>Updraft Speed (w):</strong> <span id="resUpdraft"></span><br>
-        <strong>Storm Height (m):</strong> <span id="resHeight"></span><br>
+        <strong>Updraft Speed:</strong> <span id="resUpdraft"></span><br>
+        <strong>Storm Height:</strong> <span id="resHeight"></span><br>
         <strong>Total Shear (knots):</strong> <span id="resTotalShear"></span><br>
-        <strong>Rotation Shear (knots):</strong> <span id="resRotShear"></span><br>
+        <strong>Rotational Shear (knots):</strong> <span id="resRotShear"></span><br>
       </p>
     </div>
-
-    <div id="infoBlock" class="info-block" style="display:none;">
-      <h4>Unified Equation Summary</h4>
+    
+    <!-- Documentation Section: How It Works -->
+    <div class="documentation">
+      <h4>How This Calculator Works</h4>
       <p>
-        We combine geometry (lat/lon + elevation angle) to get storm distance 
-        <span class="formula">R</span> and height 
-        <span class="formula">H</span>. Then for the updraft:
-      </p>
-      <p class="formula">
-        w<sub>eff</sub> = &radic;(2·(CAPE - CIN)) · f<sub>entr</sub> · (1 - &alpha;<sub>w</sub>) · f<sub>drag</sub> · f<sub>lightning</sub>
-      </p>
-      <p>
-        where:
+        This tool estimates storm parameters by calculating an <em>effective updraft speed</em> from available energy (CAPE) and inhibitory energy (CIN). It uses a series of multipliers to account for key processes:
       </p>
       <ul>
-        <li>CIN is negative energy (cap). If CIN ≥ CAPE, no updraft forms.</li>
-        <li>f<sub>entr</sub> is entrainment factor, (0-1).</li>
-        <li>&alpha;<sub>w</sub> is water loading fraction (0-0.4).</li>
-        <li>f<sub>drag</sub> is based on density & storm height.</li>
-        <li>f<sub>lightning</sub> = 1 + &gamma;(strikes/100).</li>
+        <li>
+          <strong>Net Available Energy:</strong> The basic idea is that an air parcel, when lifted, will gain kinetic energy roughly equal to √(2 · (CAPE – CIN)) if all available energy were converted to motion.
+        </li>
+        <li>
+          <strong>Entrainment Factor (f_entr):</strong> Reduces the ideal updraft speed to account for mixing with environmental air.
+        </li>
+        <li>
+          <strong>Water Loading (1 – α_water):</strong> Represents the effect of hydrometeors (rain, hail) slowing the updraft.
+        </li>
+        <li>
+          <strong>Drag Factor:</strong> Modeled as an exponential decay (<em>exp(–dragCoeff·ρ·H/dragScale)</em>) rather than a linear decrease, this term represents how aerodynamic drag and entrainment further slow the updraft.
+        </li>
+        <li>
+          <strong>Lightning Enhancement (f_lightning):</strong> A small boost to the updraft based on lightning strike frequency.
+        </li>
+        <li>
+          <strong>Lapse Rate Factor (f_lapse):</strong> Adjusts the updraft based on the measured temperature difference (ΔT) between the surface and mid-levels relative to a reference lapse rate.
+        </li>
+        <li>
+          <strong>Dewpoint Factor (f_dew):</strong> Derived from the surface temperature and dewpoint, it uses an approximate formula for the lifting condensation level (LCL ≈ 125 × (T_surface – T_dew)). A lower LCL (indicating higher moisture) boosts the updraft.
+        </li>
+        <li>
+          <strong>Storm Stage Factor (f_stage):</strong> Selected by the user (Developing, Mature, Dissipating) to simulate how the storm’s lifecycle affects the updraft strength.
+        </li>
       </ul>
       <p>
-        We relate updraft <span class="formula">w</span> to shear 
-        <span class="formula">U = w·tan(θ)</span>, 
-        and if needed solve for CAPE by inverting the formula. Finally, 
-        rotational shear <span class="formula">U<sub>rot</sub> = 2Ω·sin(lat)·R</span> is added to get total shear.
+        The final effective updraft is computed as:
+      </p>
+      <p class="formula">
+        w_eff = √[2·(CAPE – CIN)] · f_entr · (1 – α_water) · exp(–dragCoeff·ρ·H/dragScale) · f_lightning · f_lapse · f_dew · f_stage
+      </p>
+      <p>
+        An analogous inversion function allows the user to solve for CAPE if the updraft or shear is provided instead.
+      </p>
+      <p>
+        The calculator also computes storm height based on either a provided geometric input (using observer and storm coordinates) or defaults to an empirical formula based on CAPE.
+      </p>
+      <p>
+        Finally, shear is estimated as the product of the effective updraft and the tangent of the storm tilt angle. An extra rotational shear component is added when geographic information is available.
+      </p>
+      <p class="subtle">
+        (For more details, see the inline comments in the JavaScript code.)
       </p>
     </div>
   </div>
-
-  <!-- 1) Load jsPDF from CDN (no local file needed). -->
+  
+  <!-- Load jsPDF from CDN -->
   <script 
     src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
     integrity="sha512-KO2+IBZ6Hb8OaY0nS8jNktEtmLLn3nsujh1I82D0phWC3UqCPmSL6+8CsH6XSNJIg7BmPoZepw7V6WJCIi3QEw=="
     crossorigin="anonymous"
     referrerpolicy="no-referrer">
   </script>
-
-  <!-- 2) Our main JS code for calculations & PDF generation. -->
+  
+  <!-- Main JavaScript with extensive inline documentation -->
   <script>
-    /************************************************************
-     * Constants & Helper Functions
-     ************************************************************/
-    const mpsToKnots = 1.94384;
-    const seaLevelAirDensity = 1.225; // kg/m^3
-    const T0 = 288.15;    // K
-    const L = 0.0065;     // K/m
-    const g = 9.80665;    // m/s^2
-    const R_ = 287.058;   // J/(kg·K)
-    const Omega = 7.2921e-5; // Earth's rotation rate in rad/s
-    const lightningGamma = 0.5;  // effect of lightning on updraft
+    // CONSTANTS & HELPER FUNCTIONS
+    // These values and functions are used for conversions and physical calculations.
+    const mpsToKnots = 1.94384; // conversion factor: meters per second to knots
+    const seaLevelAirDensity = 1.225; // kg/m³ at sea level
+    const T0 = 288.15;    // Standard temperature at sea level in Kelvin
+    const L = 0.0065;     // Temperature lapse rate (K/m)
+    const g = 9.80665;    // Gravitational acceleration (m/s²)
+    const R_ = 287.058;   // Gas constant for dry air (J/(kg·K))
+    const Omega = 7.2921e-5; // Earth's rotation rate (rad/s)
+    const lightningGamma = 0.5;  // Constant for lightning enhancement
+    const alphaLapse = 0.5;      // Sensitivity for lapse rate adjustment
+    const referenceLapseRate = 6.5; // Baseline lapse rate in °C/km
 
+    // Basic conversion functions:
     function degToRad(deg) {
-      return deg * (Math.PI / 180);
+      return deg * Math.PI / 180;
     }
     function radToDeg(rad) {
-      return rad * (180 / Math.PI);
+      return rad * 180 / Math.PI;
     }
-    function round(value, decimals=2) {
+    function round(value, decimals = 2) {
       return Number(Math.round(value + "e" + decimals) + "e-" + decimals);
     }
 
-    // Basic Haversine
+    // Haversine formula calculates distance between two geographic points.
     function haversine(lat1, lon1, lat2, lon2) {
-      const R_earth = 6371000; // meters
+      const R_earth = 6371000;
       let dLat = degToRad(lat2 - lat1);
       let dLon = degToRad(lon2 - lon1);
-      let a = Math.sin(dLat/2) ** 2 +
-              Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) * 
-              Math.sin(dLon/2) ** 2;
-      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      let a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) *
+              Math.sin(dLon / 2) ** 2;
+      let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R_earth * c;
     }
 
-    // Calculate air density at given height (ISA approach)
+    // Computes air density at a given height using the International Standard Atmosphere (ISA)
     function airDensity(height) {
       const T = T0 - L * height;
       if (T <= 0) return 0;
-      // exponent = (g / (R_ * L)) - 1
       const exponent = (g / (R_ * L)) - 1;
       return seaLevelAirDensity * Math.pow((T / T0), exponent);
     }
 
-    // Default storm height if geometry not used
+    // Provides a default storm height based on CAPE (empirical formula)
     function defaultStormHeight(cape) {
-      return 4000 + 2*Math.sqrt(cape);
+      return 4000 + 2 * Math.sqrt(cape);
     }
 
     /************************************************************
-     * Advanced Updraft Calculation
+     * Advanced Updraft Calculation with Dewpoint & Storm Stage
+     *
+     * This function computes the effective updraft speed (w_eff) using:
+     *
+     * 1. Ideal updraft: √(2*(CAPE – CIN))
+     * 2. Entrainment factor (f_entr) reduces the ideal speed.
+     * 3. Water loading: (1 – α_water) accounts for hydrometeor drag.
+     * 4. Drag factor: exp(–dragCoeff * ρ * H / dragScale) provides an exponential decay.
+     * 5. Lightning enhancement: f_lightning = 1 + lightningGamma*(strikes/100)
+     * 6. Lapse rate factor (f_lapse) based on ΔT.
+     * 7. Dewpoint factor (f_dew): Derived from surface temperature and dewpoint;
+     *    LCL is approximated by 125*(T_surface - T_dew) and f_dew = (1500 / LCL)^0.5.
+     * 8. Storm stage factor (f_stage): User-selected multiplier.
+     *
+     * The final w_eff is the product of all these factors.
      ************************************************************/
-    /**
-     * Compute final updraft with:
-     *   w_eff = sqrt(2*(CAPE - CIN)) * fEntrain * (1 - alphaWater)
-     *           * dragFactor * lightningFactor
-     */
-    function advancedUpdraft(cape, cinVal, stormHeight, fEntrain, alphaWater, dragCoeff, dragScale, strikes) {
-      // 1) Reduce CAPE by CIN
-      let reduced = Math.max(0, cape - cinVal); 
-      if (reduced <= 0) return 0; // fully capped or negative net
-
-      // 2) Theoretical
-      let wIdeal = Math.sqrt(2 * reduced);
-
-      // 3) Entrainment
+    function advancedUpdraft(cape, cinVal, stormHeight,
+                             fEntrain, alphaWater, dragCoeff,
+                             dragScale, strikes, deltaTVal,
+                             T_surface, T_dew, f_stage) {
+      // 1) Compute net available energy:
+      let netCAPE = Math.max(0, cape - cinVal);
+      if (netCAPE <= 0) return 0;
+      let wIdeal = Math.sqrt(2 * netCAPE);
+      
+      // 2) Apply entrainment factor:
       let wEntrain = wIdeal * fEntrain;
-
-      // 4) Water Loading
+      
+      // 3) Account for water loading (reduces updraft speed):
       let wWater = wEntrain * (1 - alphaWater);
-
-      // 5) Drag
+      
+      // 4) Calculate drag factor using exponential decay:
       let rho = airDensity(stormHeight);
-      let fDrag = 1 - (dragCoeff * rho * stormHeight / dragScale);
-      if (fDrag < 0) fDrag = 0;
+      let fDrag = Math.exp(-dragCoeff * rho * stormHeight / dragScale);
       let wDrag = wWater * fDrag;
-
-      // 6) Lightning
-      let fLightning = 1 + lightningGamma*(strikes/100);
-      let wEff = wDrag * fLightning;
-
-      return wEff;
+      
+      // 5) Lightning enhancement factor:
+      let fLightning = 1 + lightningGamma * (strikes / 100);
+      let wLightning = wDrag * fLightning;
+      
+      // 6) Lapse rate factor based on ΔT measured over 3000 m:
+      let fLapse = 1.0;
+      if (deltaTVal && deltaTVal > 0) {
+        const assumedDepth = 3000; // in meters
+        let lapseRate = deltaTVal / (assumedDepth / 1000); // in °C/km
+        fLapse = 1 + alphaLapse * ((lapseRate - referenceLapseRate) / referenceLapseRate);
+        if (fLapse < 0.8) fLapse = 0.8;
+      }
+      // Base updraft speed before new factors:
+      let wBase = wLightning * fLapse;
+      
+      // 7) Compute dewpoint factor: lower LCL (higher moisture) boosts updraft
+      let LCL = 125 * (T_surface - T_dew); // approximate LCL (m)
+      let fDew = Math.pow(1500 / LCL, 0.5);
+      
+      // 8) Final effective updraft, including storm stage multiplier:
+      return wBase * fDew * f_stage;
     }
 
     /**
-     * Invert the advanced updraft formula to solve for CAPE
-     * given a desired final w, CIN, etc.
-     *
-     * w_eff = sqrt(2*(CAPE - CIN))* fEntrain * (1 - alphaWater) * fDrag * fLightning
-     * => CAPE = CIN + ((w_eff / topFactor)^2 / 2)
-     *
-     * where topFactor = fEntrain*(1 - alphaWater)*fDrag*fLightning
+     * Invert the advanced updraft formula to solve for CAPE.
+     * Rearranged, it becomes:
+     *   CAPE = CIN + [w_eff / (f_entr*(1-α_water)*f_drag*f_lightning*f_lapse*f_dew*f_stage)]^2 / 2
      */
-    function invertCAPE(wEff, cinVal, stormHeight, fEntrain, alphaWater, dragCoeff, dragScale, strikes) {
-      // Compute fDrag, fLightning
+    function invertCAPE(wEff, cinVal, stormHeight,
+                        fEntrain, alphaWater, dragCoeff,
+                        dragScale, strikes, deltaTVal,
+                        T_surface, T_dew, f_stage) {
       let rho = airDensity(stormHeight);
-      let fDrag = 1 - (dragCoeff * rho * stormHeight / dragScale);
-      if (fDrag < 0) fDrag = 0;
-
-      let fLightning = 1 + lightningGamma*(strikes/100);
-
-      let topFactor = fEntrain*(1 - alphaWater)*fDrag*fLightning;
-      if (topFactor <= 0) {
-        // means no updraft possible
-        return 0;
+      let fDrag = Math.exp(-dragCoeff * rho * stormHeight / dragScale);
+      let fLightning = 1 + lightningGamma * (strikes / 100);
+      let fLapse = 1.0;
+      if (deltaTVal && deltaTVal > 0) {
+        const assumedDepth = 3000;
+        let lapseRate = deltaTVal / (assumedDepth / 1000);
+        fLapse = 1 + alphaLapse * ((lapseRate - referenceLapseRate) / referenceLapseRate);
+        if (fLapse < 0.8) fLapse = 0.8;
       }
-      // rearrange
-      // CAPE = CIN + ( (wEff^2)/(2 * (topFactor^2)) )
+      // Compute dewpoint factor as above:
+      let LCL = 125 * (T_surface - T_dew);
+      let fDew = Math.pow(1500 / LCL, 0.5);
+      
+      let topFactor = fEntrain * (1 - alphaWater) * fDrag * fLightning * fLapse * fDew * f_stage;
+      if (topFactor <= 0) return 0;
       let wOverTop = wEff / topFactor;
-      let halfSquared = (wOverTop * wOverTop) / 2;
-
-      let cape = cinVal + halfSquared;
-      if (cape < 0) cape = 0;
-      return cape;
+      let cape = cinVal + (wOverTop * wOverTop) / 2;
+      return cape < 0 ? 0 : cape;
     }
 
     /************************************************************
-     *  Main Calculation
+     * Main Calculation Handler
+     *
+     * This section gathers input from the webpage, computes the effective
+     * updraft speed, and then inverts the equations if necessary to solve for
+     * the missing parameter (CAPE, Shear, or Angle).
+     * It also computes geographic storm height if lat/lon data are provided.
      ************************************************************/
     document.getElementById("calcButton").addEventListener("click", () => {
-      // 1) Gather user inputs for CAPE, Shear, Angle
+      // --- Primary Input Retrieval ---
       let capeStr   = document.getElementById("cape").value.trim();
       let shearStr  = document.getElementById("shear").value.trim();
       let angleStr  = document.getElementById("angle").value.trim();
       let strikesStr= document.getElementById("strikes").value.trim();
-
       let capeUnknown   = document.getElementById("capeUnknown").checked;
       let shearUnknown  = document.getElementById("shearUnknown").checked;
       let angleUnknown  = document.getElementById("angleUnknown").checked;
-
       let providedCAPE  = (!capeUnknown && capeStr !== "") ? parseFloat(capeStr) : undefined;
       let providedShear = (!shearUnknown && shearStr !== "") ? parseFloat(shearStr) : undefined;
       let providedAngle = (!angleUnknown && angleStr !== "") ? parseFloat(angleStr) : undefined;
-
-      // Must have exactly 2 known among CAPE, Shear, Angle
-      let knownCount = [providedCAPE, providedShear, providedAngle].filter(v => v!==undefined).length;
+      let knownCount = [providedCAPE, providedShear, providedAngle].filter(v => v !== undefined).length;
       if (knownCount !== 2) {
         alert("Please provide exactly two of: CAPE, Shear, Angle (and mark the other as Unknown).");
         return;
       }
-
       let strikes = (strikesStr !== "") ? parseFloat(strikesStr) : 0;
       if (strikes < 0) strikes = 0;
+      
+      // --- Advanced Factors ---
+      let cinVal     = parseFloat(document.getElementById("cin").value) || 0;
+      let fEntrain   = parseFloat(document.getElementById("entrain").value);
+      if (isNaN(fEntrain)) fEntrain = 0.7;
+      let alphaWater = parseFloat(document.getElementById("waterLoad").value);
+      if (isNaN(alphaWater)) alphaWater = 0.2;
+      let dragCoeff  = parseFloat(document.getElementById("dragCoeff").value);
+      if (isNaN(dragCoeff)) dragCoeff = 0.8;
+      let dragScale  = parseFloat(document.getElementById("dragScale").value);
+      if (isNaN(dragScale)) dragScale = 1e6;
+      let deltaTVal = parseFloat(document.getElementById("deltaT").value);
+      if (isNaN(deltaTVal)) deltaTVal = 0;
 
-      // 2) Advanced factors
-      let cinVal       = parseFloat(document.getElementById("cin").value) || 0;
-      let fEntrain     = parseFloat(document.getElementById("entrain").value);
-      if (isNaN(fEntrain)) fEntrain = 0.7; // default
-      let alphaWater   = parseFloat(document.getElementById("waterLoad").value);
-      if (isNaN(alphaWater)) alphaWater = 0.2; // default
-      let dragCoeff    = parseFloat(document.getElementById("dragCoeff").value);
-      if (isNaN(dragCoeff)) dragCoeff = 0.8; // default
-      let dragScale    = parseFloat(document.getElementById("dragScale").value);
-      if (isNaN(dragScale)) dragScale = 1e6; // default
-
-      // 3) Geographic
+      // --- Geographic Inputs ---
       let obsLatStr = document.getElementById("observerLat").value.trim();
       let obsLatUnknown = document.getElementById("obsLatUnknown").checked;
       let obsLonStr = document.getElementById("observerLon").value.trim();
-
       let stormLatStr = document.getElementById("stormLat").value.trim();
       let stormLatUnknown = document.getElementById("stormLatUnknown").checked;
       let stormLonStr = document.getElementById("stormLon").value.trim();
       let stormLonUnknown = document.getElementById("stormLonUnknown").checked;
-
       let elevAngleStr = document.getElementById("elevAngle").value.trim();
       let elevAngleUnknown = document.getElementById("elevAngleUnknown").checked;
 
-      // Compute distance if possible
+      // --- Surface Conditions & Storm Stage ---
+      let surfTempStr = document.getElementById("surfTemp").value.trim();
+      let surfDewStr  = document.getElementById("surfDew").value.trim();
+      let T_surface = surfTempStr !== "" ? parseFloat(surfTempStr) : 25;
+      let T_dew = surfDewStr !== "" ? parseFloat(surfDewStr) : 18;
+      let f_stage = parseFloat(document.getElementById("stormStage").value);
+
+      // --- Compute Distance if Geographic Data Provided ---
       let distance = undefined;
       if (!obsLatUnknown && !stormLatUnknown && obsLatStr && stormLatStr) {
         let obsLat = parseFloat(obsLatStr);
         let obsLon = obsLonStr ? parseFloat(obsLonStr) : 0;
         let sLat   = parseFloat(stormLatStr);
         let sLon   = stormLonStr ? parseFloat(stormLonStr) : 0;
-        distance   = haversine(obsLat, obsLon, sLat, sLon);
+        distance = haversine(obsLat, obsLon, sLat, sLon);
       }
-
-      // 4) Storm Height
-      let finalStormHeight = 4000; // fallback
+      
+      // --- Determine Storm Height ---
+      let finalStormHeight = 4000; // default fallback height in meters
       let geoHeightUsed = false;
       if (!elevAngleUnknown && elevAngleStr && distance !== undefined) {
         let elevAngle = parseFloat(elevAngleStr);
         finalStormHeight = distance * Math.tan(degToRad(elevAngle));
         geoHeightUsed = true;
       } else if (providedCAPE !== undefined) {
-        // default formula
         finalStormHeight = defaultStormHeight(providedCAPE);
       }
-
-      // 5) Solve for Missing Param (CAPE, Shear, or Angle)
+      
+      // --- Solve for the Missing Parameter ---
       let computedCAPE       = providedCAPE;
       let computedAngle      = providedAngle;
       let computedShearKnots = providedShear;
-
-      // a) Missing Angle
+      
       if (computedAngle === undefined) {
         if (computedCAPE === undefined) {
           alert("Cannot compute angle without a CAPE value.");
           return;
         }
-        // We'll compute updraft from advanced approach
         let wEff = advancedUpdraft(
           computedCAPE, cinVal, finalStormHeight,
-          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+          T_surface, T_dew, f_stage
         );
-        let shearMs = computedShearKnots / mpsToKnots; // user gave shear in knots
         if (wEff <= 0) {
-          alert("No updraft formed (CIN >= CAPE or extreme factors). Angle can't be found.");
+          alert("No updraft formed (CIN ≥ CAPE or extreme factors). Angle can't be found.");
           return;
         }
-        computedAngle = radToDeg(Math.atan(shearMs / wEff));
-      }
-      // b) Missing Shear
-      else if (computedShearKnots === undefined) {
+        // If angle is missing, we can (as a placeholder) use the ratio of shear to updraft.
+        computedAngle = radToDeg(Math.atan((providedShear || 0) / wEff));
+      } else if (computedShearKnots === undefined) {
         if (computedCAPE === undefined) {
           alert("Cannot compute shear without a CAPE value.");
           return;
         }
         let wEff = advancedUpdraft(
           computedCAPE, cinVal, finalStormHeight,
-          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+          T_surface, T_dew, f_stage
         );
         let angleRad = degToRad(computedAngle);
         let shearMs  = wEff * Math.tan(angleRad);
         computedShearKnots = shearMs * mpsToKnots;
-      }
-      // c) Missing CAPE
-      else if (computedCAPE === undefined) {
-        // We'll invert the advanced updraft formula
+      } else if (computedCAPE === undefined) {
         let angleRad = degToRad(computedAngle);
         let shearMs  = computedShearKnots / mpsToKnots;
-        // wWanted = shearMs / tan(angle)
-        let wWanted = 0;
-        if (Math.tan(angleRad) !== 0) {
-          wWanted = shearMs / Math.tan(angleRad);
-        } else {
+        let wWanted = (Math.tan(angleRad) !== 0) ? shearMs / Math.tan(angleRad) : 0;
+        if (!wWanted) {
           alert("Invalid angle for shear inversion (tan=0).");
           return;
         }
-
-        // Invert to get CAPE
-        let capeFound = invertCAPE(
+        computedCAPE = invertCAPE(
           wWanted, cinVal, finalStormHeight,
-          fEntrain, alphaWater, dragCoeff, dragScale, strikes
+          fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+          T_surface, T_dew, f_stage
         );
-        computedCAPE = capeFound;
-
-        // If we used default storm height logic
         if (!geoHeightUsed) {
-          // update finalStormHeight based on the new CAPE
           finalStormHeight = defaultStormHeight(computedCAPE);
         }
       }
-
-      // 6) Compute final updraft from advanced approach
+      
+      // --- Final Updraft and Shear Calculation ---
       let finalUpdraft = advancedUpdraft(
         computedCAPE, cinVal, finalStormHeight,
-        fEntrain, alphaWater, dragCoeff, dragScale, strikes
+        fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+        T_surface, T_dew, f_stage
       );
-
-      // 7) Basic Shear from updraft & angle
       let angleRadFinal = degToRad(computedAngle);
       let basicShearMs  = finalUpdraft * Math.tan(angleRadFinal);
       let basicShearKnots = basicShearMs * mpsToKnots;
       let finalShearKnots = (providedShear !== undefined) ? providedShear : basicShearKnots;
-
-      // 8) Rotational Shear
+      
+      // --- Rotational Shear (if geographic data available) ---
       let rotShearKnots = 0;
       if (distance !== undefined && obsLatStr && !obsLatUnknown) {
         let latVal = parseFloat(obsLatStr);
@@ -501,29 +558,23 @@
         rotShearKnots = rotMs * mpsToKnots;
       }
       let totalShearKnots = finalShearKnots + rotShearKnots;
-
-      // 9) Display results
-      document.getElementById("resCAPE").textContent   = round(computedCAPE,2) + " J/kg";
-      document.getElementById("resShear").textContent  = round(finalShearKnots,2);
-      document.getElementById("resAngle").textContent  = round(computedAngle,2) + "°";
-
-      let updraftTxt = round(finalUpdraft,2) + " m/s (" 
-                     + round(finalUpdraft*mpsToKnots,2) + " kt)";
+      
+      // --- Display Results ---
+      document.getElementById("resCAPE").textContent   = round(computedCAPE, 2) + " J/kg";
+      document.getElementById("resShear").textContent  = round(totalShearKnots, 2);
+      document.getElementById("resAngle").textContent  = round(computedAngle, 2) + "°";
+      let updraftTxt = round(finalUpdraft, 2) + " m/s (" + round(finalUpdraft * mpsToKnots, 2) + " kt)";
       document.getElementById("resUpdraft").textContent = updraftTxt;
-
-      let heightTxt = round(finalStormHeight,2) + (geoHeightUsed ? " (geo)" : " (default)");
+      let heightTxt = round(finalStormHeight, 2) + (geoHeightUsed ? " (geo)" : " (default)");
       document.getElementById("resHeight").textContent  = heightTxt;
-
-      document.getElementById("resTotalShear").textContent = round(totalShearKnots,2);
-      document.getElementById("resRotShear").textContent   = round(rotShearKnots,2);
-
+      document.getElementById("resTotalShear").textContent = round(totalShearKnots, 2);
+      document.getElementById("resRotShear").textContent   = round(rotShearKnots, 2);
       document.getElementById("resultPanel").style.display = "block";
       document.getElementById("infoBlock").style.display   = "block";
     });
 
-    //  Generate PDF button
+    // --- PDF Generation (unchanged) ---
     document.getElementById("pdfButton").addEventListener("click", () => {
-      // 1) Build a date-based name for the PDF
       const now = new Date();
       const year  = now.getUTCFullYear();
       const month = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -531,15 +582,9 @@
       const hours = String(now.getUTCHours()).padStart(2, '0');
       const mins  = String(now.getUTCMinutes()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}_${hours}${mins}Z`;
-
-      // Optionally, incorporate observer lat/lon if available
       const obsLatStr = document.getElementById("observerLat").value.trim() || "UnknownLat";
       const obsLonStr = document.getElementById("observerLon").value.trim() || "UnknownLon";
-
-      // Construct the final filename
       const fileName = `Storm_${dateStr}_Lat${obsLatStr}_Lon${obsLonStr}.pdf`;
-
-      // 2) Gather text from results
       let capeVal   = document.getElementById("resCAPE").textContent || "(no data)";
       let shearVal  = document.getElementById("resShear").textContent || "(no data)";
       let angleVal  = document.getElementById("resAngle").textContent || "(no data)";
@@ -547,15 +592,10 @@
       let heightVal = document.getElementById("resHeight").textContent || "(no data)";
       let totalShr  = document.getElementById("resTotalShear").textContent || "(no data)";
       let rotShr    = document.getElementById("resRotShear").textContent || "(no data)";
-
-      // 3) Create the jsPDF object
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-
-      // 4) Write some text
       doc.setFontSize(14);
       doc.text("Storm Survey Results", 10, 10);
-
       doc.setFontSize(12);
       doc.text(`CAPE: ${capeVal}`, 10, 20);
       doc.text(`Shear (knots): ${shearVal}`, 10, 30);
@@ -564,22 +604,20 @@
       doc.text(`Storm Height: ${heightVal}`, 10, 60);
       doc.text(`Total Shear (knots): ${totalShr}`, 10, 70);
       doc.text(`Rotational Shear (knots): ${rotShr}`, 10, 80);
-
-      // Add short summary of the advanced equations
       doc.setFontSize(11);
       let eqLines = [
-        "Advanced Updraft Formula:",
-        "  w_eff = sqrt(2*(CAPE - CIN))*fEntrain*(1-alphaWater)*fDrag*(1+gamma*(strikes/100))",
-        "Missing CAPE is solved by inverting the same formula if needed.",
-        "Shear = w_eff * tan(angle). RotShear = 2*Omega*sin(lat)*Distance"
+        "Enhanced Updraft Formula:",
+        "  w_eff = √[2·(CAPE – CIN)] · f_entr · (1 – α_water)",
+        "          · exp(–dragCoeff·ρ·H/dragScale) · f_lightning · f_lapse",
+        "          · f_dew · f_stage",
+        "f_dew = (1500 / LCL)^0.5, with LCL ≈ 125*(T_surface – T_dew)",
+        "f_stage from storm stage selection."
       ];
       let yPos = 95;
       eqLines.forEach(line => {
         doc.text(line, 10, yPos);
         yPos += 6;
       });
-
-      // 5) Download the PDF
       doc.save(fileName);
     });
   </script>
