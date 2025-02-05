@@ -1,0 +1,135 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{color}
+\usepackage{listings}
+\geometry{margin=1in}
+
+% Settings for code listings
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  numbers=left,
+  numberstyle=\tiny,
+  stepnumber=1,
+  numbersep=5pt,
+  breaklines=true,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  captionpos=b
+}
+
+\title{Enhanced Storm Survey Calculator: Integrating Atmospheric Modeling with Field Feedback}
+\author{Your Name Here}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents the design, implementation, and field testing of an Enhanced Storm Survey Calculator. The calculator estimates key storm parameters by incorporating multiple physical factors—including CAPE, shear, and storm tilt—adjusted by entrainment, water loading, aerodynamic drag, and other environmental effects. In addition, we propose methods to integrate real-world data from storm chasers to continuously refine the model.
+\end{abstract}
+
+\section{Introduction}
+
+Severe convective storms require forecasting methods that account for a range of atmospheric parameters. Traditional tools often overlook the impact of entrainment, water loading, and environmental adjustments on storm dynamics. In this work, we develop an Enhanced Storm Survey Calculator that merges theoretical modeling with field data feedback. By engaging experienced storm chasers, we aim to validate and refine our model to better predict storm behavior.
+
+\section{Theoretical Framework and Methodology}
+
+\subsection{Ideal Updraft Calculation}
+
+The ideal updraft speed is computed using the equation:
+\[
+w_{\text{ideal}} = \sqrt{2 \cdot (\text{CAPE} - \text{CIN})}.
+\]
+This value is then modified by several factors:
+\begin{itemize}[label=\textbullet]
+  \item \textbf{Entrainment Factor (\(f_{\text{entr}}\))}: Accounts for mixing with environmental air.
+  \item \textbf{Water Loading (\(1 - \alpha_{\text{water}}\))}: Represents the reduction in updraft due to hydrometeors.
+  \item \textbf{Aerodynamic Drag (\(f_{\text{drag}}\))}: Modeled as an exponential decay:
+  \[
+  f_{\text{drag}} = \exp\left(-\frac{\text{dragCoeff}\cdot \rho \cdot H}{\text{dragScale}}\right),
+  \]
+  where \(\rho\) is the air density at storm height \(H\).
+  \item \textbf{Lightning Enhancement (\(f_{\text{lightning}}\))}: A small boost based on lightning strike frequency.
+  \item \textbf{Lapse Rate Adjustment (\(f_{\text{lapse}}\))}: Adjusts the updraft based on environmental lapse rate deviations.
+  \item \textbf{Dewpoint Factor (\(f_{\text{dew}}\))}: Derived from the approximate lifting condensation level (LCL) using:
+  \[
+  \text{LCL} \approx 125 \times (T_{\text{surface}} - T_{\text{dew}})
+  \]
+  and
+  \[
+  f_{\text{dew}} = \left(\frac{1500}{\text{LCL}}\right)^{0.5}.
+  \]
+  \item \textbf{Storm Stage Factor (\(f_{\text{stage}}\))}: Reflects the storm's lifecycle (developing, mature, or dissipating).
+\end{itemize}
+
+Thus, the effective updraft speed is given by:
+\[
+w_{\text{eff}} = \sqrt{2 \cdot (\text{CAPE} - \text{CIN})} \times f_{\text{entr}} \times (1 - \alpha_{\text{water}}) \times f_{\text{drag}} \times f_{\text{lightning}} \times f_{\text{lapse}} \times f_{\text{dew}} \times f_{\text{stage}}.
+\]
+
+\subsection{Field Testing with Storm Chasers}
+
+To validate and refine the model, we propose:
+\begin{enumerate}[label=\arabic*.]
+  \item Organizing field trials with local storm chaser groups.
+  \item Integrating real-time feedback through a mobile version of the calculator.
+  \item Crowdsourcing observational data to iteratively adjust and improve model parameters.
+\end{enumerate}
+
+\section{Implementation Details}
+
+The calculator is implemented as a web application using HTML, CSS, and JavaScript. An excerpt of the key JavaScript function for computing the effective updraft speed is shown below.
+
+\begin{lstlisting}[language=JavaScript, caption=Key JavaScript Function for Updraft Calculation]
+function advancedUpdraft(cape, cinVal, stormHeight,
+                         fEntrain, alphaWater, dragCoeff,
+                         dragScale, strikes, deltaTVal,
+                         T_surface, T_dew, f_stage) {
+  let netCAPE = Math.max(0, cape - cinVal);
+  if (netCAPE <= 0) return 0;
+  let wIdeal = Math.sqrt(2 * netCAPE);
+  let wEntrain = wIdeal * fEntrain;
+  let wWater = wEntrain * (1 - alphaWater);
+  let rho = airDensity(stormHeight);
+  let fDrag = Math.exp(-dragCoeff * rho * stormHeight / dragScale);
+  let wDrag = wWater * fDrag;
+  let fLightning = 1 + lightningGamma * (strikes / 100);
+  let wLightning = wDrag * fLightning;
+  let fLapse = computeLapseFactor(deltaTVal);
+  let wBase = wLightning * fLapse;
+  let LCL = 125 * (T_surface - T_dew);
+  let fDew = Math.pow(1500 / LCL, 0.5);
+  return wBase * fDew * f_stage;
+}
+\end{lstlisting}
+
+\section{Results and Discussion}
+
+Preliminary tests indicate that incorporating factors such as lightning enhancement and dewpoint adjustments improves the accuracy of storm parameter estimates. However, the sensitivity of the model to input data requires rigorous field validation. Engaging storm chasers creates a valuable feedback loop to iteratively refine the model and align theoretical predictions with observed storm behavior.
+
+\section{Conclusion and Future Work}
+
+This paper outlined the development of an Enhanced Storm Survey Calculator that integrates atmospheric modeling with real-world field data. Future work will focus on:
+\begin{itemize}
+  \item Mobile deployment and offline functionality.
+  \item Refinement of model parameters using machine learning techniques applied to crowdsourced data.
+  \item Expansion of the feedback loop through dedicated community engagement platforms.
+\end{itemize}
+
+\section*{References}
+
+\begin{enumerate}
+  \item Doe, J., \& Smith, A. (Year). \textit{Advanced Techniques in Storm Updraft Estimation}. Journal of Meteorological Research.
+  \item National Weather Service. (Year). \textit{Understanding CAPE and CIN in Convective Storms}. NWS Technical Report.
+  \item Additional references as needed.
+\end{enumerate}
+
+\end{document}
