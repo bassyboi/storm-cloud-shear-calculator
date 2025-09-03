@@ -9,6 +9,7 @@
       font-family: Arial, sans-serif;
       margin: 2rem;
       background: #f2f8ff;
+      line-height: 1.6;
     }
     .container {
       max-width: 900px;
@@ -18,6 +19,20 @@
       border-radius: 8px;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      body {
+        margin: 1rem;
+      }
+      .container {
+        padding: 1rem;
+      }
+      .two-buttons {
+        flex-direction: column;
+      }
+    }
+    
     h1, h2 {
       text-align: center;
       color: #333;
@@ -41,6 +56,15 @@
       margin-top: 0.3rem;
       border: 1px solid #ccc;
       border-radius: 4px;
+      transition: border-color 0.3s ease;
+    }
+    input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: #007acc;
+      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+    }
+    input[type="number"]:invalid {
+      border-color: #dc3545;
     }
     .unknown-option {
       font-size: 0.9rem;
@@ -56,9 +80,14 @@
       background: #007acc;
       color: #fff;
       cursor: pointer;
+      transition: background-color 0.3s ease;
     }
     button:hover {
       background: #005fa3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
     .result, .documentation {
       margin-top: 1.5rem;
@@ -70,6 +99,24 @@
     .documentation {
       background: #fff8dc;
       border: 1px solid #f4e1a1;
+    }
+    .error-message {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+      display: none;
+    }
+    .success-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+      display: none;
     }
     .formula {
       background: #eef;
@@ -114,6 +161,53 @@
       color: #555;
       margin-top: 1rem;
     }
+    
+    /* Loading state */
+    .loading {
+      position: relative;
+    }
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top: 2px solid #007acc;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    
+    /* Collapsible sections */
+    .collapsible {
+      cursor: pointer;
+      padding: 0.5rem;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    .collapsible:hover {
+      background: #e9ecef;
+    }
+    .collapsible.active {
+      background: #007acc;
+      color: white;
+    }
+    .collapsible-content {
+      display: none;
+      padding: 1rem 0;
+    }
+    .collapsible-content.active {
+      display: block;
+    }
   </style>
 </head>
 
@@ -141,25 +235,33 @@
       Enter <em>exactly two</em> of CAPE, Bulk Shear (knots), or Storm Tilt Angle (°). The calculator will solve for the missing parameter.
     </p>
     
+    <!-- Error and Success Messages -->
+    <div id="errorMessage" class="error-message" role="alert"></div>
+    <div id="successMessage" class="success-message" role="status"></div>
+    
     <!-- Primary Inputs Section -->
     <div id="primary-inputs">
       <h3>Primary Inputs</h3>
       <p class="subtle">(Typically found on the main screen of weather apps)</p>
       
       <label for="cape">CAPE (J/kg):</label>
-      <input type="number" id="cape" placeholder="e.g. 2000" step="any" />
-      <label class="unknown-option"><input type="checkbox" id="capeUnknown"> Unknown</label>
+      <input type="number" id="cape" placeholder="e.g. 2000" step="any" aria-describedby="cape-help" />
+      <label class="unknown-option"><input type="checkbox" id="capeUnknown" aria-describedby="cape-unknown-help"> Unknown</label>
+      <div id="cape-help" class="subtle">Convective Available Potential Energy in Joules per kilogram</div>
       
       <label for="shear">Bulk Wind Shear (knots):</label>
-      <input type="number" id="shear" placeholder="e.g. 30" step="any" />
-      <label class="unknown-option"><input type="checkbox" id="shearUnknown"> Unknown</label>
+      <input type="number" id="shear" placeholder="e.g. 30" step="any" aria-describedby="shear-help" />
+      <label class="unknown-option"><input type="checkbox" id="shearUnknown" aria-describedby="shear-unknown-help"> Unknown</label>
+      <div id="shear-help" class="subtle">Wind speed difference between surface and upper levels</div>
       
       <label for="angle">Storm Tilt Angle (°):</label>
-      <input type="number" id="angle" placeholder="e.g. 25" step="any" />
-      <label class="unknown-option"><input type="checkbox" id="angleUnknown"> Unknown</label>
+      <input type="number" id="angle" placeholder="e.g. 25" step="any" aria-describedby="angle-help" />
+      <label class="unknown-option"><input type="checkbox" id="angleUnknown" aria-describedby="angle-unknown-help"> Unknown</label>
+      <div id="angle-help" class="subtle">Angle of storm tilt from vertical in degrees</div>
       
       <label for="strikes">Lightning Strikes per Minute:</label>
-      <input type="number" id="strikes" placeholder="e.g. 50" step="1" />
+      <input type="number" id="strikes" placeholder="e.g. 50" step="1" aria-describedby="strikes-help" />
+      <div id="strikes-help" class="subtle">Optional: Number of lightning strikes observed per minute</div>
     </div>
     
     <!-- Geographic Inputs Section -->
@@ -320,7 +422,7 @@
     referrerpolicy="no-referrer">
   </script>
   
-  <!-- Main JavaScript with extensive inline documentation -->
+  <!-- Main JavaScript with enhanced error handling and modular structure -->
   <script>
     // CONSTANTS & HELPER FUNCTIONS
     // These values and functions are used for conversions and physical calculations.
@@ -334,6 +436,77 @@
     const lightningGamma = 0.5;  // Constant for lightning enhancement
     const alphaLapse = 0.5;      // Sensitivity for lapse rate adjustment
     const referenceLapseRate = 6.5; // Baseline lapse rate in °C/km
+
+    // UI Helper Functions
+    const UI = {
+      showError: function(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        const successDiv = document.getElementById('successMessage');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        successDiv.style.display = 'none';
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      },
+      
+      showSuccess: function(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        const successDiv = document.getElementById('successMessage');
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+      },
+      
+      hideMessages: function() {
+        document.getElementById('errorMessage').style.display = 'none';
+        document.getElementById('successMessage').style.display = 'none';
+      },
+      
+      setLoading: function(isLoading) {
+        const calcButton = document.getElementById('calcButton');
+        if (isLoading) {
+          calcButton.disabled = true;
+          calcButton.classList.add('loading');
+          calcButton.textContent = 'Calculating...';
+        } else {
+          calcButton.disabled = false;
+          calcButton.classList.remove('loading');
+          calcButton.textContent = 'Calculate';
+        }
+      }
+    };
+
+    // Input Validation Functions
+    const Validation = {
+      isValidNumber: function(value, min = -Infinity, max = Infinity) {
+        return !isNaN(value) && isFinite(value) && value >= min && value <= max;
+      },
+      
+      validatePrimaryInputs: function(cape, shear, angle, capeUnknown, shearUnknown, angleUnknown) {
+        const providedCAPE = (!capeUnknown && cape !== "") ? parseFloat(cape) : undefined;
+        const providedShear = (!shearUnknown && shear !== "") ? parseFloat(shear) : undefined;
+        const providedAngle = (!angleUnknown && angle !== "") ? parseFloat(angle) : undefined;
+        
+        const knownCount = [providedCAPE, providedShear, providedAngle].filter(v => v !== undefined).length;
+        
+        if (knownCount !== 2) {
+          throw new Error("Please provide exactly two of: CAPE, Shear, Angle (and mark the other as Unknown).");
+        }
+        
+        if (providedCAPE !== undefined && !this.isValidNumber(providedCAPE, 0, 10000)) {
+          throw new Error("CAPE must be a positive number between 0 and 10,000 J/kg.");
+        }
+        
+        if (providedShear !== undefined && !this.isValidNumber(providedShear, 0, 200)) {
+          throw new Error("Bulk Wind Shear must be a positive number between 0 and 200 knots.");
+        }
+        
+        if (providedAngle !== undefined && !this.isValidNumber(providedAngle, 0, 90)) {
+          throw new Error("Storm Tilt Angle must be between 0 and 90 degrees.");
+        }
+        
+        return { providedCAPE, providedShear, providedAngle };
+      }
+    };
 
     // Basic conversion functions:
     function degToRad(deg) {
@@ -425,6 +598,7 @@
       
       // 7) Compute dewpoint factor: lower LCL (higher moisture) boosts updraft
       let LCL = 125 * (T_surface - T_dew); // approximate LCL (m)
+      if (LCL <= 0) LCL = 100; // Prevent invalid LCL values
       let fDew = Math.pow(1500 / LCL, 0.5);
       
       // 8) Final effective updraft, including storm stage multiplier:
@@ -452,6 +626,7 @@
       }
       // Compute dewpoint factor as above:
       let LCL = 125 * (T_surface - T_dew);
+      if (LCL <= 0) LCL = 100; // Prevent invalid LCL values
       let fDew = Math.pow(1500 / LCL, 0.5);
       
       let topFactor = fEntrain * (1 - alphaWater) * fDrag * fLightning * fLapse * fDew * f_stage;
@@ -464,216 +639,311 @@
     /************************************************************
      * Main Calculation Handler
      *
-     * This section gathers input from the webpage, computes the effective
+     * This section gathers input from the webpage, validates it, computes the effective
      * updraft speed, and then inverts the equations if necessary to solve for
      * the missing parameter (CAPE, Shear, or Angle).
      * It also computes geographic storm height if lat/lon data are provided.
      ************************************************************/
-    document.getElementById("calcButton").addEventListener("click", () => {
-      // --- Primary Input Retrieval ---
-      let capeStr   = document.getElementById("cape").value.trim();
-      let shearStr  = document.getElementById("shear").value.trim();
-      let angleStr  = document.getElementById("angle").value.trim();
-      let strikesStr= document.getElementById("strikes").value.trim();
-      let capeUnknown   = document.getElementById("capeUnknown").checked;
-      let shearUnknown  = document.getElementById("shearUnknown").checked;
-      let angleUnknown  = document.getElementById("angleUnknown").checked;
-      let providedCAPE  = (!capeUnknown && capeStr !== "") ? parseFloat(capeStr) : undefined;
-      let providedShear = (!shearUnknown && shearStr !== "") ? parseFloat(shearStr) : undefined;
-      let providedAngle = (!angleUnknown && angleStr !== "") ? parseFloat(angleStr) : undefined;
-      let knownCount = [providedCAPE, providedShear, providedAngle].filter(v => v !== undefined).length;
-      if (knownCount !== 2) {
-        alert("Please provide exactly two of: CAPE, Shear, Angle (and mark the other as Unknown).");
-        return;
-      }
-      let strikes = (strikesStr !== "") ? parseFloat(strikesStr) : 0;
-      if (strikes < 0) strikes = 0;
-      
-      // --- Advanced Factors ---
-      let cinVal     = parseFloat(document.getElementById("cin").value) || 0;
-      let fEntrain   = parseFloat(document.getElementById("entrain").value);
-      if (isNaN(fEntrain)) fEntrain = 0.7;
-      let alphaWater = parseFloat(document.getElementById("waterLoad").value);
-      if (isNaN(alphaWater)) alphaWater = 0.2;
-      let dragCoeff  = parseFloat(document.getElementById("dragCoeff").value);
-      if (isNaN(dragCoeff)) dragCoeff = 0.8;
-      let dragScale  = parseFloat(document.getElementById("dragScale").value);
-      if (isNaN(dragScale)) dragScale = 1e6;
-      let deltaTVal = parseFloat(document.getElementById("deltaT").value);
-      if (isNaN(deltaTVal)) deltaTVal = 0;
-
-      // --- Geographic Inputs ---
-      let obsLatStr = document.getElementById("observerLat").value.trim();
-      let obsLatUnknown = document.getElementById("obsLatUnknown").checked;
-      let obsLonStr = document.getElementById("observerLon").value.trim();
-      let stormLatStr = document.getElementById("stormLat").value.trim();
-      let stormLatUnknown = document.getElementById("stormLatUnknown").checked;
-      let stormLonStr = document.getElementById("stormLon").value.trim();
-      let stormLonUnknown = document.getElementById("stormLonUnknown").checked;
-      let elevAngleStr = document.getElementById("elevAngle").value.trim();
-      let elevAngleUnknown = document.getElementById("elevAngleUnknown").checked;
-
-      // --- Surface Conditions & Storm Stage ---
-      let surfTempStr = document.getElementById("surfTemp").value.trim();
-      let surfDewStr  = document.getElementById("surfDew").value.trim();
-      let T_surface = surfTempStr !== "" ? parseFloat(surfTempStr) : 25;
-      let T_dew = surfDewStr !== "" ? parseFloat(surfDewStr) : 18;
-      let f_stage = parseFloat(document.getElementById("stormStage").value);
-
-      // --- Compute Distance if Geographic Data Provided ---
-      let distance = undefined;
-      if (!obsLatUnknown && !stormLatUnknown && obsLatStr && stormLatStr) {
-        let obsLat = parseFloat(obsLatStr);
-        let obsLon = obsLonStr ? parseFloat(obsLonStr) : 0;
-        let sLat   = parseFloat(stormLatStr);
-        let sLon   = stormLonStr ? parseFloat(stormLonStr) : 0;
-        distance = haversine(obsLat, obsLon, sLat, sLon);
-      }
-      
-      // --- Determine Storm Height ---
-      let finalStormHeight = 4000; // default fallback height in meters
-      let geoHeightUsed = false;
-      if (!elevAngleUnknown && elevAngleStr && distance !== undefined) {
-        let elevAngle = parseFloat(elevAngleStr);
-        finalStormHeight = distance * Math.tan(degToRad(elevAngle));
-        geoHeightUsed = true;
-      } else if (providedCAPE !== undefined) {
-        finalStormHeight = defaultStormHeight(providedCAPE);
-      }
-      
-      // --- Solve for the Missing Parameter ---
-      let computedCAPE       = providedCAPE;
-      let computedAngle      = providedAngle;
-      let computedShearKnots = providedShear;
-      
-      if (computedAngle === undefined) {
-        if (computedCAPE === undefined) {
-          alert("Cannot compute angle without a CAPE value.");
+    document.getElementById("calcButton").addEventListener("click", async () => {
+      try {
+        UI.hideMessages();
+        UI.setLoading(true);
+        
+        // Small delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // --- Primary Input Retrieval and Validation ---
+        let capeStr   = document.getElementById("cape").value.trim();
+        let shearStr  = document.getElementById("shear").value.trim();
+        let angleStr  = document.getElementById("angle").value.trim();
+        let strikesStr= document.getElementById("strikes").value.trim();
+        
+        let capeUnknown   = document.getElementById("capeUnknown").checked;
+        let shearUnknown  = document.getElementById("shearUnknown").checked;
+        let angleUnknown  = document.getElementById("angleUnknown").checked;
+        
+        const { providedCAPE, providedShear, providedAngle } = Validation.validatePrimaryInputs(
+          capeStr, shearStr, angleStr, capeUnknown, shearUnknown, angleUnknown
+        );
+        
+        let strikes = (strikesStr !== "") ? parseFloat(strikesStr) : 0;
+        if (strikes < 0) strikes = 0;
+        if (strikes > 1000) {
+          UI.showError("Lightning strikes per minute seems unusually high. Please verify this value.");
           return;
         }
-        let wEff = advancedUpdraft(
+        
+        // --- Advanced Factors with Validation ---
+        let cinVal     = parseFloat(document.getElementById("cin").value) || 0;
+        let fEntrain   = parseFloat(document.getElementById("entrain").value);
+        if (isNaN(fEntrain)) fEntrain = 0.7;
+        if (fEntrain < 0 || fEntrain > 1) {
+          throw new Error("Entrainment Factor must be between 0.0 and 1.0.");
+        }
+        
+        let alphaWater = parseFloat(document.getElementById("waterLoad").value);
+        if (isNaN(alphaWater)) alphaWater = 0.2;
+        if (alphaWater < 0 || alphaWater > 0.4) {
+          throw new Error("Water Loading Fraction must be between 0.0 and 0.4.");
+        }
+        
+        let dragCoeff  = parseFloat(document.getElementById("dragCoeff").value);
+        if (isNaN(dragCoeff)) dragCoeff = 0.8;
+        if (dragCoeff <= 0) {
+          throw new Error("Drag Coefficient must be positive.");
+        }
+        
+        let dragScale  = parseFloat(document.getElementById("dragScale").value);
+        if (isNaN(dragScale)) dragScale = 1e6;
+        if (dragScale <= 0) {
+          throw new Error("Drag Scale Constant must be positive.");
+        }
+        
+        let deltaTVal = parseFloat(document.getElementById("deltaT").value);
+        if (isNaN(deltaTVal)) deltaTVal = 0;
+
+        // --- Geographic Inputs ---
+        let obsLatStr = document.getElementById("observerLat").value.trim();
+        let obsLatUnknown = document.getElementById("obsLatUnknown").checked;
+        let obsLonStr = document.getElementById("observerLon").value.trim();
+        let stormLatStr = document.getElementById("stormLat").value.trim();
+        let stormLatUnknown = document.getElementById("stormLatUnknown").checked;
+        let stormLonStr = document.getElementById("stormLon").value.trim();
+        let stormLonUnknown = document.getElementById("stormLonUnknown").checked;
+        let elevAngleStr = document.getElementById("elevAngle").value.trim();
+        let elevAngleUnknown = document.getElementById("elevAngleUnknown").checked;
+
+        // --- Surface Conditions & Storm Stage ---
+        let surfTempStr = document.getElementById("surfTemp").value.trim();
+        let surfDewStr  = document.getElementById("surfDew").value.trim();
+        let T_surface = surfTempStr !== "" ? parseFloat(surfTempStr) : 25;
+        let T_dew = surfDewStr !== "" ? parseFloat(surfDewStr) : 18;
+        
+        if (T_surface < T_dew) {
+          throw new Error("Surface temperature cannot be lower than dewpoint temperature.");
+        }
+        
+        let f_stage = parseFloat(document.getElementById("stormStage").value);
+
+        // --- Compute Distance if Geographic Data Provided ---
+        let distance = undefined;
+        if (!obsLatUnknown && !stormLatUnknown && obsLatStr && stormLatStr) {
+          let obsLat = parseFloat(obsLatStr);
+          let obsLon = obsLonStr ? parseFloat(obsLonStr) : 0;
+          let sLat   = parseFloat(stormLatStr);
+          let sLon   = stormLonStr ? parseFloat(stormLonStr) : 0;
+          
+          if (!Validation.isValidNumber(obsLat, -90, 90) || !Validation.isValidNumber(sLat, -90, 90)) {
+            throw new Error("Latitude values must be between -90 and 90 degrees.");
+          }
+          if (!Validation.isValidNumber(obsLon, -180, 180) || !Validation.isValidNumber(sLon, -180, 180)) {
+            throw new Error("Longitude values must be between -180 and 180 degrees.");
+          }
+          
+          distance = haversine(obsLat, obsLon, sLat, sLon);
+        }
+        
+        // --- Determine Storm Height ---
+        let finalStormHeight = 4000; // default fallback height in meters
+        let geoHeightUsed = false;
+        if (!elevAngleUnknown && elevAngleStr && distance !== undefined) {
+          let elevAngle = parseFloat(elevAngleStr);
+          if (!Validation.isValidNumber(elevAngle, 0, 90)) {
+            throw new Error("Elevation angle must be between 0 and 90 degrees.");
+          }
+          finalStormHeight = distance * Math.tan(degToRad(elevAngle));
+          geoHeightUsed = true;
+        } else if (providedCAPE !== undefined) {
+          finalStormHeight = defaultStormHeight(providedCAPE);
+        }
+        
+        // --- Solve for the Missing Parameter ---
+        let computedCAPE       = providedCAPE;
+        let computedAngle      = providedAngle;
+        let computedShearKnots = providedShear;
+        
+        if (computedAngle === undefined) {
+          if (computedCAPE === undefined) {
+            throw new Error("Cannot compute angle without a CAPE value.");
+          }
+          let wEff = advancedUpdraft(
+            computedCAPE, cinVal, finalStormHeight,
+            fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+            T_surface, T_dew, f_stage
+          );
+          if (wEff <= 0) {
+            throw new Error("No updraft formed (CIN ≥ CAPE or extreme factors). Angle cannot be calculated.");
+          }
+          // If angle is missing, we can (as a placeholder) use the ratio of shear to updraft.
+          computedAngle = radToDeg(Math.atan((providedShear || 0) / wEff));
+        } else if (computedShearKnots === undefined) {
+          if (computedCAPE === undefined) {
+            throw new Error("Cannot compute shear without a CAPE value.");
+          }
+          let wEff = advancedUpdraft(
+            computedCAPE, cinVal, finalStormHeight,
+            fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+            T_surface, T_dew, f_stage
+          );
+          let angleRad = degToRad(computedAngle);
+          let shearMs  = wEff * Math.tan(angleRad);
+          computedShearKnots = shearMs * mpsToKnots;
+        } else if (computedCAPE === undefined) {
+          let angleRad = degToRad(computedAngle);
+          let shearMs  = computedShearKnots / mpsToKnots;
+          let wWanted = (Math.tan(angleRad) !== 0) ? shearMs / Math.tan(angleRad) : 0;
+          if (!wWanted) {
+            throw new Error("Invalid angle for shear inversion (angle too close to 0°).");
+          }
+          computedCAPE = invertCAPE(
+            wWanted, cinVal, finalStormHeight,
+            fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
+            T_surface, T_dew, f_stage
+          );
+          if (!geoHeightUsed) {
+            finalStormHeight = defaultStormHeight(computedCAPE);
+          }
+        }
+        
+        // --- Final Updraft and Shear Calculation ---
+        let finalUpdraft = advancedUpdraft(
           computedCAPE, cinVal, finalStormHeight,
           fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
           T_surface, T_dew, f_stage
         );
-        if (wEff <= 0) {
-          alert("No updraft formed (CIN ≥ CAPE or extreme factors). Angle can't be found.");
-          return;
+        let angleRadFinal = degToRad(computedAngle);
+        let basicShearMs  = finalUpdraft * Math.tan(angleRadFinal);
+        let basicShearKnots = basicShearMs * mpsToKnots;
+        let finalShearKnots = (providedShear !== undefined) ? providedShear : basicShearKnots;
+        
+        // --- Rotational Shear (if geographic data available) ---
+        let rotShearKnots = 0;
+        if (distance !== undefined && obsLatStr && !obsLatUnknown) {
+          let latVal = parseFloat(obsLatStr);
+          let fVal   = 2 * Omega * Math.sin(degToRad(latVal));
+          let rotMs  = fVal * distance;
+          rotShearKnots = rotMs * mpsToKnots;
         }
-        // If angle is missing, we can (as a placeholder) use the ratio of shear to updraft.
-        computedAngle = radToDeg(Math.atan((providedShear || 0) / wEff));
-      } else if (computedShearKnots === undefined) {
-        if (computedCAPE === undefined) {
-          alert("Cannot compute shear without a CAPE value.");
-          return;
-        }
-        let wEff = advancedUpdraft(
-          computedCAPE, cinVal, finalStormHeight,
-          fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
-          T_surface, T_dew, f_stage
-        );
-        let angleRad = degToRad(computedAngle);
-        let shearMs  = wEff * Math.tan(angleRad);
-        computedShearKnots = shearMs * mpsToKnots;
-      } else if (computedCAPE === undefined) {
-        let angleRad = degToRad(computedAngle);
-        let shearMs  = computedShearKnots / mpsToKnots;
-        let wWanted = (Math.tan(angleRad) !== 0) ? shearMs / Math.tan(angleRad) : 0;
-        if (!wWanted) {
-          alert("Invalid angle for shear inversion (tan=0).");
-          return;
-        }
-        computedCAPE = invertCAPE(
-          wWanted, cinVal, finalStormHeight,
-          fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
-          T_surface, T_dew, f_stage
-        );
-        if (!geoHeightUsed) {
-          finalStormHeight = defaultStormHeight(computedCAPE);
-        }
+        let totalShearKnots = finalShearKnots + rotShearKnots;
+        
+        // --- Display Results ---
+        document.getElementById("resCAPE").textContent   = round(computedCAPE, 2) + " J/kg";
+        document.getElementById("resShear").textContent  = round(totalShearKnots, 2);
+        document.getElementById("resAngle").textContent  = round(computedAngle, 2) + "°";
+        let updraftTxt = round(finalUpdraft, 2) + " m/s (" + round(finalUpdraft * mpsToKnots, 2) + " kt)";
+        document.getElementById("resUpdraft").textContent = updraftTxt;
+        let heightTxt = round(finalStormHeight, 2) + (geoHeightUsed ? " m (geo)" : " m (default)");
+        document.getElementById("resHeight").textContent  = heightTxt;
+        document.getElementById("resTotalShear").textContent = round(totalShearKnots, 2);
+        document.getElementById("resRotShear").textContent   = round(rotShearKnots, 2);
+        
+        document.getElementById("resultPanel").style.display = "block";
+        
+        UI.showSuccess("Calculation completed successfully!");
+        
+        // Scroll to results
+        document.getElementById("resultPanel").scrollIntoView({ behavior: 'smooth' });
+        
+      } catch (error) {
+        console.error("Calculation error:", error);
+        UI.showError(error.message || "An unexpected error occurred during calculation.");
+      } finally {
+        UI.setLoading(false);
       }
-      
-      // --- Final Updraft and Shear Calculation ---
-      let finalUpdraft = advancedUpdraft(
-        computedCAPE, cinVal, finalStormHeight,
-        fEntrain, alphaWater, dragCoeff, dragScale, strikes, deltaTVal,
-        T_surface, T_dew, f_stage
-      );
-      let angleRadFinal = degToRad(computedAngle);
-      let basicShearMs  = finalUpdraft * Math.tan(angleRadFinal);
-      let basicShearKnots = basicShearMs * mpsToKnots;
-      let finalShearKnots = (providedShear !== undefined) ? providedShear : basicShearKnots;
-      
-      // --- Rotational Shear (if geographic data available) ---
-      let rotShearKnots = 0;
-      if (distance !== undefined && obsLatStr && !obsLatUnknown) {
-        let latVal = parseFloat(obsLatStr);
-        let fVal   = 2 * Omega * Math.sin(degToRad(latVal));
-        let rotMs  = fVal * distance;
-        rotShearKnots = rotMs * mpsToKnots;
-      }
-      let totalShearKnots = finalShearKnots + rotShearKnots;
-      
-      // --- Display Results ---
-      document.getElementById("resCAPE").textContent   = round(computedCAPE, 2) + " J/kg";
-      document.getElementById("resShear").textContent  = round(totalShearKnots, 2);
-      document.getElementById("resAngle").textContent  = round(computedAngle, 2) + "°";
-      let updraftTxt = round(finalUpdraft, 2) + " m/s (" + round(finalUpdraft * mpsToKnots, 2) + " kt)";
-      document.getElementById("resUpdraft").textContent = updraftTxt;
-      let heightTxt = round(finalStormHeight, 2) + (geoHeightUsed ? " (geo)" : " (default)");
-      document.getElementById("resHeight").textContent  = heightTxt;
-      document.getElementById("resTotalShear").textContent = round(totalShearKnots, 2);
-      document.getElementById("resRotShear").textContent   = round(rotShearKnots, 2);
-      document.getElementById("resultPanel").style.display = "block";
-      document.getElementById("infoBlock").style.display   = "block";
     });
 
-    // --- PDF Generation (unchanged) ---
+    // --- Enhanced PDF Generation with better error handling ---
     document.getElementById("pdfButton").addEventListener("click", () => {
-      const now = new Date();
-      const year  = now.getUTCFullYear();
-      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-      const day   = String(now.getUTCDate()).padStart(2, '0');
-      const hours = String(now.getUTCHours()).padStart(2, '0');
-      const mins  = String(now.getUTCMinutes()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}_${hours}${mins}Z`;
-      const obsLatStr = document.getElementById("observerLat").value.trim() || "UnknownLat";
-      const obsLonStr = document.getElementById("observerLon").value.trim() || "UnknownLon";
-      const fileName = `Storm_${dateStr}_Lat${obsLatStr}_Lon${obsLonStr}.pdf`;
-      let capeVal   = document.getElementById("resCAPE").textContent || "(no data)";
-      let shearVal  = document.getElementById("resShear").textContent || "(no data)";
-      let angleVal  = document.getElementById("resAngle").textContent || "(no data)";
-      let updraftVal= document.getElementById("resUpdraft").textContent || "(no data)";
-      let heightVal = document.getElementById("resHeight").textContent || "(no data)";
-      let totalShr  = document.getElementById("resTotalShear").textContent || "(no data)";
-      let rotShr    = document.getElementById("resRotShear").textContent || "(no data)";
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.setFontSize(14);
-      doc.text("Storm Survey Results", 10, 10);
-      doc.setFontSize(12);
-      doc.text(`CAPE: ${capeVal}`, 10, 20);
-      doc.text(`Shear (knots): ${shearVal}`, 10, 30);
-      doc.text(`Angle (°): ${angleVal}`, 10, 40);
-      doc.text(`Updraft: ${updraftVal}`, 10, 50);
-      doc.text(`Storm Height: ${heightVal}`, 10, 60);
-      doc.text(`Total Shear (knots): ${totalShr}`, 10, 70);
-      doc.text(`Rotational Shear (knots): ${rotShr}`, 10, 80);
-      doc.setFontSize(11);
-      let eqLines = [
-        "Enhanced Updraft Formula:",
-        "  w_eff = √[2·(CAPE – CIN)] · f_entr · (1 – α_water)",
-        "          · exp(–dragCoeff·ρ·H/dragScale) · f_lightning · f_lapse",
-        "          · f_dew · f_stage",
-        "f_dew = (1500 / LCL)^0.5, with LCL ≈ 125*(T_surface – T_dew)",
-        "f_stage from storm stage selection."
-      ];
-      let yPos = 95;
-      eqLines.forEach(line => {
-        doc.text(line, 10, yPos);
-        yPos += 6;
-      });
-      doc.save(fileName);
+      try {
+        // Check if jsPDF is available
+        if (typeof window.jspdf === 'undefined') {
+          UI.showError("PDF generation is currently unavailable due to external library loading issues. Please check your internet connection and try again.");
+          return;
+        }
+        
+        const now = new Date();
+        const year  = now.getUTCFullYear();
+        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+        const day   = String(now.getUTCDate()).padStart(2, '0');
+        const hours = String(now.getUTCHours()).padStart(2, '0');
+        const mins  = String(now.getUTCMinutes()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}_${hours}${mins}Z`;
+        
+        const obsLatStr = document.getElementById("observerLat").value.trim() || "UnknownLat";
+        const obsLonStr = document.getElementById("observerLon").value.trim() || "UnknownLon";
+        const fileName = `Storm_${dateStr}_Lat${obsLatStr}_Lon${obsLonStr}.pdf`;
+        
+        // Check if results are available
+        if (document.getElementById("resultPanel").style.display === "none") {
+          UI.showError("Please calculate results first before generating a PDF.");
+          return;
+        }
+        
+        let capeVal   = document.getElementById("resCAPE").textContent || "(no data)";
+        let shearVal  = document.getElementById("resShear").textContent || "(no data)";
+        let angleVal  = document.getElementById("resAngle").textContent || "(no data)";
+        let updraftVal= document.getElementById("resUpdraft").textContent || "(no data)";
+        let heightVal = document.getElementById("resHeight").textContent || "(no data)";
+        let totalShr  = document.getElementById("resTotalShear").textContent || "(no data)";
+        let rotShr    = document.getElementById("resRotShear").textContent || "(no data)";
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Add title and headers
+        doc.setFontSize(16);
+        doc.text("Storm Survey Results", 10, 15);
+        
+        doc.setFontSize(12);
+        doc.text(`Generated: ${new Date().toUTCString()}`, 10, 25);
+        
+        // Add results
+        doc.setFontSize(14);
+        doc.text("Calculated Parameters:", 10, 40);
+        
+        doc.setFontSize(12);
+        let yPos = 50;
+        const results = [
+          `CAPE: ${capeVal}`,
+          `Shear (knots): ${shearVal}`,
+          `Angle (°): ${angleVal}`,
+          `Updraft: ${updraftVal}`,
+          `Storm Height: ${heightVal}`,
+          `Total Shear (knots): ${totalShr}`,
+          `Rotational Shear (knots): ${rotShr}`
+        ];
+        
+        results.forEach(result => {
+          doc.text(result, 15, yPos);
+          yPos += 8;
+        });
+        
+        // Add formula information
+        doc.setFontSize(11);
+        yPos += 10;
+        let eqLines = [
+          "Enhanced Updraft Formula:",
+          "  w_eff = √[2·(CAPE – CIN)] · f_entr · (1 – α_water)",
+          "          · exp(–dragCoeff·ρ·H/dragScale) · f_lightning · f_lapse",
+          "          · f_dew · f_stage",
+          "",
+          "Where:",
+          "  f_dew = (1500 / LCL)^0.5, with LCL ≈ 125*(T_surface – T_dew)",
+          "  f_stage from storm stage selection"
+        ];
+        
+        eqLines.forEach(line => {
+          doc.text(line, 10, yPos);
+          yPos += 6;
+        });
+        
+        doc.save(fileName);
+        UI.showSuccess(`PDF generated successfully: ${fileName}`);
+        
+      } catch (error) {
+        console.error("PDF generation error:", error);
+        UI.showError("Failed to generate PDF. Please try again or check your browser's console for more details.");
+      }
     });
   </script>
 </body>
